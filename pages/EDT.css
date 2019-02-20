@@ -1,0 +1,71 @@
+
+.container {
+    height: 100%;
+    width: 100%;
+    font-size: small;
+    overflow: hidden;
+    box-sizing: content-box;
+}
+
+
+ul {
+    border: 1px solid Black;
+    display: inline-block;
+    vertical-align: top;
+    min-height: 100px;
+    min-width: 100px;
+    max-height: 500px;
+    padding: 10px;
+    list-style-type: none;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+li {
+    background-color: white;
+    border-bottom: 1px dotted Gray;
+}
+
+li.selected {
+    background-color: lightgrey;
+}
+
+input[type=submit] {
+    background-color: #000000;
+    color: #fff;
+    width: 120px;
+    height: 30px;
+    border-radius: 5px;
+    font-size: large;
+}
+
+p {
+    color: red;
+}
+
+#instructions {
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+button {
+    width: 100%;
+    font-size: large;
+    font-weight: bold;
+    margin-top: 10px !important;
+    color: maroon;
+    height: 40px;
+}
+
+table {
+    width: 100% !important;
+}
+input.button {
+    width: 20% !important;
+}
+
+input {
+    width: 100% !important;
+    margin: 0;
+}
+

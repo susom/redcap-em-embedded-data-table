@@ -1,0 +1,54 @@
+{
+  "name": "Embedded Data Tables",
+
+  "namespace":"Stanford\\EDT",
+
+  "description": "A module that allows users to embed data tables into their projects",
+
+  "versions": [
+    { "0.1": "Initial Development Version" }
+  ],
+
+  "authors": [
+    {
+      "name": "Andy Martin",
+      "email": "andy123@stanford.edu",
+      "institution": "Stanford University"
+    },
+    {
+      "name": "Lee Ann Yasukawa",
+      "email": "yasukawa@stanford.edu",
+      "institution": "Stanford University"
+    }
+  ],
+
+  "permissions": [
+    "redcap_module_project_enable"
+  ],
+
+  "no-auth-pages": [
+  ],
+
+  "links": {
+    "control-center": [
+      {
+        "name": "Embedded Data Table Instructions",
+        "icon": "gear",
+        "url": "pages/instructions.php"
+      }
+    ],
+    "project": [
+      {
+        "name": "Embedded Data Table Setup",
+        "icon": "gear",
+        "url": "pages/setup.php"
+      }
+    ]
+  },
+
+  "system-settings": [
+  ],
+
+  "project-settings": [
+  ]
+}
