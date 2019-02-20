@@ -31,8 +31,14 @@ When this External Module is enabled for a project, a link to the EDT Setup page
 Once this information is specified, the configuration parameters will be stored in the database for the display.
 
 ## Display
-The currently implemented way to access the display page is a project bookmark. The bookmark URL is 
-    http://localhost/redcap/redcap_v8.10.1/ExternalModules/?prefix=embedded_data_tables&page=pages%2Fdisplay
-(on my local machine).  The project ID and record ID must be included for the display to work.
+The currently implemented way to access the display page is a project bookmark. The bookmark URL is
+
+    http://localhost/redcap/redcap_v8.10.1/ExternalModules/?prefix=embedded-data-tables&page=pages%2Fdisplay
+             (on my local machine)
+  OR
+    https://redcap-dev.stanford.edu/redcap_v8.11.3/ExternalModules/?prefix=embedded-data-tables&page=pages%2Fdisplay
+             (on redcap-dev)
+
+The project ID and record ID must be included for the display to work.
 
 In the future, users will be able to specify fields in an instrument before which the display will be inserted.
