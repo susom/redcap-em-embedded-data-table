@@ -36,6 +36,7 @@ The currently implemented way to access the display page is a project bookmark. 
     http://localhost/redcap/redcap_v8.10.1/ExternalModules/?prefix=embedded-data-tables&page=pages%2Fdisplay
              (on my local machine)
   OR
+  
     https://redcap-dev.stanford.edu/redcap_v8.11.3/ExternalModules/?prefix=embedded-data-tables&page=pages%2Fdisplay
              (on redcap-dev)
 
