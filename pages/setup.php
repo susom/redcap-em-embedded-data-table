@@ -174,7 +174,7 @@ if ($action == 'get_projects') {
 
     print $html;
     return;
-} else if ($action == 'delete_setup') {
+} else if ($action == 'delete_config') {
 
     $table_name = isset($_POST['table_name']) && !empty($_POST['table_name']) ? $_POST['table_name'] : null;
     if (!empty($table_name)) {
@@ -186,7 +186,7 @@ if ($action == 'get_projects') {
         unset($config_field_after[$key]);
         unset($config_info[$key]);
 
-        setConfigs($config_names, $config_field_after, $config_info);
+        setConfigs(array_values($config_names), array_values($config_field_after), array_values($config_info));
     }
 
     return;
@@ -266,7 +266,7 @@ function getArmList($selectedProj, $arm_id = null) {
             if (!empty($arm_id) && $arm_id == $eventInfo["id"]) {
                 $input = "<input class='form-control' id='arms' name='arms' list='arm_list' value = '" . $eventInfo["name"] . "' onchange='getSelectedArm()'>";
             }
-            $html .= "<option value='" . $eventInfo["name"] . "' data-arm='" . $eventInfo["name"] . "' data-arm_id='" . $eventInfo["id"] . "'></option>";
+            $html .= "<option value='" . $eventInfo["name"] . "' data-arm='" . $eventInfo["name"] . "' data-armid='" . $eventInfo["id"] . "'></option>";
         }
 
         $html .= "</datalist>";
@@ -707,9 +707,12 @@ function getAvailableFields($selectedProj, $form) {
         if (arm_name === "") {
             document.getElementById("arms_noselection_check").innerHTML = "* Required value";
         } else {
-            document.getElementById("arms_noselection_check").innerHTML = "";
-            var selected_option = $('#arm_list').find("[value='" + arm_name + "']");
-            var arm_id = selected_option.data("arm_id");
+            var noselection = document.getElementById("arms_noselection_check");
+            if (noselection) {
+                noselection.innerHTML = "";
+            }
+            var selected_option = $("#arm_list").find('option[value="' + arm_name + '"]');
+            var arm_id = selected_option.data("armid");
             edt.getDisplayList(getProjectID(), arm_id);
         }
     }
@@ -1005,7 +1008,7 @@ function getAvailableFields($selectedProj, $form) {
             datatype: "html",
             async: true,
             data: {
-                "action"     : "delete_setup",
+                "action"     : "delete_config",
                 "table_name" : table_name
             },
             success:function(html) {

@@ -38,6 +38,8 @@ function getDisplay($config_name)
         }
     }
 
+    $module->emLog("Config name: " . $config_name . ", and info: " . json_encode($config_info));
+
     if (empty($config_info)) {
         return;
     }
@@ -47,6 +49,14 @@ function getDisplay($config_name)
     $selectedProj = getProjDataDictionary($config_info["project_id"]);
     if (empty($selectedProj)) {
         $module->emError("Cannot retrieve project data dictionary for displays for pid " . $config_info["project_id"]);
+    }
+
+    // Figure out the arm number
+    foreach($selectedProj->eventInfo as $eventId => $eventInfo) {
+        if ($eventInfo["arm_id"] == trim($config_info["arm"])) {
+            $arm_num = $eventInfo["arm_num"];
+            break;
+        }
     }
 
     // If this display type is a repeating form, use the repeating form utilities to create the table
@@ -62,41 +72,23 @@ function getDisplay($config_name)
 
             $repeating_form = new RepeatingFormsExt($config_info["project_id"], $config_info["form"]);
 
-            // For the display, add the data project record ID to the list.
+            // For the display add a link to the record so the user can go directly there from the display
             $displayData = array();
             foreach($recordList as $recordNum => $recordData) {
                 $data = $repeating_form->getAllInstancesFlat($recordNum, array_keys($config_info["fields"]), $config_info['event']);
                 foreach ($data as $one_record => $record_info) {
-                    $one_record = array();
+                    $one_record = $record_info;
 
-                    // If the data project is not the same as the current project, add the record id
-                    if ($pid != $config_info["project_id"]) {
-                        $one_record[$selectedProj->table_pk] = $recordNum;
-                    }
+                    // Replace the instance ID with the link to the record
+                    $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
+                    $one_record["instance"] = $record_link;
 
-                    // Convert the data into labels instead of coded values when this field is a checkbox, etc
-                    foreach($record_info as $fieldKey => $fieldValue) {
-                        $one_record[$fieldKey] = $fieldValue;
-                    }
                     $displayData[] = $one_record;
                 }
             }
 
-            // For the display, add the instance id to the label. Insert it after the record label which is in the first position
-            $displayHeader = array();
-            foreach($config_info["fields"] as $header_label) {
-                if (($config_info["project_id"] == $pid) && empty($displayHeader)) {
-                    $displayHeader[] = 'Instance ID';
-                } else if (empty($displayHeader)) {
-                    $displayHeader[] = $header_label;
-                    $displayHeader[] = 'Instance ID';
-                } else{
-                    $displayHeader[] = $header_label;
-                }
-            }
-
             // Generate the display
-            $html = $display->renderTable($selectedProj, $displayHeader, $displayData);
+            $html = $display->renderTable($selectedProj, $config_info["fields"], $displayData);
             break;
         case "events":
 
@@ -105,7 +97,7 @@ function getDisplay($config_name)
             // Retrieve data for the display
             if (empty($config_info['key_field'])) {
                 $records = array($record_id);
-           } else {
+            } else {
                 // First find the records that meet our criteria
                 // We need to do this in 2 steps because Redcap::getData is weird where it only looks at the events that have the filter and
                 // does not give me back the events with data.
@@ -117,7 +109,7 @@ function getDisplay($config_name)
                 foreach($data as $recordId => $recordInfo) {
                     $records[] = $recordId;
                 }
-           }
+            }
 
             // Now that we have the list of records we want to retrieve, get the fields
             $data = REDCap::getData($config_info["project_id"], 'array', $records, array_keys($config_info["fields"]));
@@ -134,6 +126,12 @@ function getDisplay($config_name)
                     foreach ($config_info["fields"] as $fieldname => $fieldlabel) {
                         $fieldArray[$fieldname] = $eventInfo[$fieldname];
                         if (!empty($fieldArray[$fieldname])) $fieldNotNullCount++;
+                    }
+
+                    // Add a link to the record if the data project is not the display project
+                    if ($selectedProj->project_id != $pid) {
+                        $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=" . trim($config_info["project_id"]) . "&arm=" . $arm_num . "&id=" . $record . "'>" . $record . "</a>";
+                        $fieldArray[$selectedProj->table_pk] = $record_link;
                     }
 
                     // We found some data that was not null so save it for display
@@ -167,6 +165,12 @@ function getDisplay($config_name)
                     foreach (array_keys($config_info["fields"]) as $field_name) {
                         $one_record[$field_name] = $record[$field_name];
                     }
+
+                    // Add a link to the record if the data project is not the display project
+                    $record_id = $one_record[$selectedProj->table_pk];
+                    $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=" . trim($config_info["project_id"]) . "&arm=" . $arm_num . "&id=" . $record_id . "'>" . $record_id . "</a>";
+                    $one_record[$selectedProj->table_pk] = $record_link;
+
                     $formatted_data[] = $one_record;
                 }
             }
