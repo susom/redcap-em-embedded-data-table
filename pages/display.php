@@ -80,17 +80,22 @@ function getDisplay($config_name)
                     $one_record = $record_info;
 
                     // Replace the instance ID with the link to the record
-                    if ($config_info["project_id"] != $pid) {
-                        $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
-                        $one_record["instance"] = $record_link;
-                    }
+                    $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
+                    $one_record["instance"] = $record_link;
 
                     $displayData[] = $one_record;
                 }
             }
 
+            // If the data project is the same as this display project, add the instance ID to the list
+            if ($config_info["project_id"] == $pid) {
+                $displayHeader = array_merge(array("Instance"), $config_info["fields"]);
+            } else {
+                $displayHeader = $config_info["fields"];
+            }
+
             // Generate the display
-            $html = $display->renderTable($selectedProj, $config_info["fields"], $displayData);
+            $html = $display->renderTable($selectedProj, $displayHeader, $displayData);
             break;
         case "events":
 
