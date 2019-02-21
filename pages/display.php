@@ -80,8 +80,10 @@ function getDisplay($config_name)
                     $one_record = $record_info;
 
                     // Replace the instance ID with the link to the record
-                    $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
-                    $one_record["instance"] = $record_link;
+                    if ($config_info["project_id"] != $pid) {
+                        $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
+                        $one_record["instance"] = $record_link;
+                    }
 
                     $displayData[] = $one_record;
                 }
