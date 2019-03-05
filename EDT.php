@@ -12,11 +12,18 @@ class EDT extends \ExternalModules\AbstractExternalModule
         parent::__construct();
     }
 
+    /*
+    function redcap_every_page_top($project_id) {
+        global $record_id, $event_id;
+        //$this->emLog("Project ID: " .$project_id, PAGE,$_GET["event_id"], $_GET["id"], $record_id, $event_id);
+    }
+    */
+
     function emLog()
     {
-        global $module;
+
         $emLogger = ExternalModules\ExternalModules::getModuleInstance('em_logger');
-        $emLogger->emLog($module->PREFIX, func_get_args(), "INFO");
+        $emLogger->emLog($this->PREFIX, func_get_args(), "INFO");
     }
 
     function emDebug()

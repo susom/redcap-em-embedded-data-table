@@ -12,48 +12,71 @@ use \REDCap;
 
 class CreateDisplay {
 
-    public function renderTable($selectedProj, $header, $data)
+    public function renderTable($id, $header, $data, $title=null)
     {
         $grid = "";
 
         //Render table
-        $grid .= '<div class="table">';
+        $grid .= '<div>';
 
-        if (!empty($data)) {
-            $grid .= '<table class="table table-striped table-bordered dataTable" cellspacing="2" width="100%">';
-            $grid .= $this->renderHeaderRow($header);
-            $grid .= $this->renderTableRows($data, $selectedProj);
-            $grid .= '</table><br>';
+        $grid .= '<table class="table table-striped table-bordered dataTable" id="' . $id . '">';
+        if (!empty($title)) {
+            $grid .= "<caption>" . $title . "</caption>";
         }
+        $grid .= $this->renderHeaderRow($header);
+        $grid .= $this->renderTableRows($data);
+        $grid .= '</table>';
 
-        $grid .= '</div>';
+        $grid .= '</div><br><br>';
 
         return $grid;
     }
 
-    private function renderHeaderRow($header = array())
+    public function renderPlainTable($id, $header, $data, $title=null)
+    {
+        $grid = "";
+
+        // Render table without the row stripping and bordering
+        $grid .= '<div>';
+
+        $grid .= '<table class="table dataTable" id="' . $id . '">';
+        if (!empty($title)) {
+            $grid .= "<caption>" . $title . "</caption>";
+        }
+        $grid .= $this->renderHeaderRow($header);
+        $grid .= $this->renderTableRows($data);
+        $grid .= '</table>';
+
+        $grid .= '</div><br><br>';
+
+        return $grid;
+    }
+
+    private function renderHeaderRow($header)
     {
         $row = '<thead><tr>';
 
         foreach ($header as $col_key => $this_col) {
-            $row .= '<th class="th-sm">' . $this_col;
+            $row .= '<th class="th-sm" scope="col">' . $this_col;
             $row .= '<i class="fa fa-sort float-right" aria-hidden="true"></i>';
             $row .= '</th>';
         }
 
         $row .= '</tr></thead>';
+
         return $row;
     }
 
-    private function renderTableRows($data, $selectedProj)
+    private function renderTableRows($data)
     {
+        global $module;
         $rows = '<tbody>';
 
         foreach ($data as $row_key => $this_row) {
             $rows .= '<tr>';
 
             foreach($this_row as $rowKey => $rowValue) {
-                $rows .= '<td>' . $this->getLabel($selectedProj, $rowKey, $rowValue) . '</td>';
+                $rows .= '<td>' . $rowValue . '</td>';
             }
 
             // End row
@@ -63,57 +86,6 @@ class CreateDisplay {
         $rows .= '</tbody>';
 
         return $rows;
-    }
-
-    private function getLabel($selectedProj, $field, $value)
-    {
-        global $module;
-
-        if (empty($field)) {
-            $module->emError("The variable list is undefined so cannot retrieve data dictionary options.");
-        }
-
-        $fieldInfo = $selectedProj->metadata[$field];
-        $label = null;
-        switch ($fieldInfo["element_type"]) {
-            case "select":
-            case "radio":
-            case "yesno":
-
-                $optionList = $fieldInfo["element_enum"];
-                $options = explode('\n', $optionList);
-                foreach ($options as $optionKey => $optionValue) {
-                    $option = explode(',', $optionValue);
-                    if (trim($option[0]) == $value) {
-                        if (empty($label)) {
-                            $label = trim($option[1]);
-                        } else {
-                            $label .= ', ' . trim($option[1]);
-                        }
-                    }
-                }
-
-                break;
-            case "checkbox":
-
-                $optionList = $fieldInfo["element_enum"];
-                $options = explode('\n', $optionList);
-                foreach ($options as $optionKey => $optionValue) {
-                    $option = explode(',', $optionValue);
-                    if ($value[trim($option[0])] == 1) {
-                        if (empty($label)) {
-                            $label = trim($option[1]);
-                        } else {
-                            $label .= ', ' . trim($option[1]);
-                        }
-                    }
-                }
-                break;
-            default:
-                $label = $value;
-        }
-
-        return $label;
     }
 
 }

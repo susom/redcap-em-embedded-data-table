@@ -41,3 +41,56 @@ function setConfigs($config_names, $config_fields, $config_info) {
     $module->setProjectSetting("config_field_after", $config_fields);
     $module->setProjectSetting("config_info", $config_info);
 }
+
+function getLabel($selectedProj, $field, $value)
+{
+    global $module;
+
+    if (empty($field)) {
+        $module->emError("The variable list is undefined so cannot retrieve data dictionary options.");
+    }
+
+    $fieldInfo = $selectedProj->metadata[$field];
+
+    $label = null;
+    switch ($fieldInfo["element_type"]) {
+        case "select":
+        case "radio":
+        case "yesno":
+
+            $optionList = $fieldInfo["element_enum"];
+            $options = explode('\n', $optionList);
+            foreach ($options as $optionKey => $optionValue) {
+
+                $option = explode(',', $optionValue, 2);
+                if (trim($option[0]) == $value) {
+                    if (empty($label)) {
+                        $label = trim($option[1]);
+                    } else {
+                        $label .= ', ' . trim($option[1]);
+                    }
+                }
+            }
+
+        break;
+        case "checkbox":
+
+            $optionList = $fieldInfo["element_enum"];
+            $options = explode('\n', $optionList);
+            foreach ($options as $optionKey => $optionValue) {
+                $option = explode(',', $optionValue);
+                if ($value[trim($option[0])] == 1) {
+                    if (empty($label)) {
+                        $label = trim($option[1]);
+                    } else {
+                        $label .= ', ' . trim($option[1]);
+                    }
+                }
+            }
+            break;
+        default:
+            $label = $value;
+    }
+
+    return $label;
+}

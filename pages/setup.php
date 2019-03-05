@@ -78,6 +78,8 @@ if ($action == 'get_projects') {
     $key_field = isset($_POST['key_field']) && !empty($_POST['key_field']) ? $_POST['key_field'] : null;
     $key_event = isset($_POST['key_event']) && !empty($_POST['key_event']) ? $_POST['key_event'] : null;
     $table_name = isset($_POST['table_name']) && !empty($_POST['table_name']) ? $_POST['table_name'] : null;
+    $file = isset($_POST['file']) && !empty($_POST['file']) ? $_POST['file'] : null;
+    $title = isset($_POST['title']) && !empty($_POST['title']) ? $_POST['title'] : null;
 
     if (empty($selectedProj) || $selectedProj->project_id !== $selected_project) {
         $selectedProj = getProjDataDictionary($selected_project);
@@ -97,11 +99,12 @@ if ($action == 'get_projects') {
     // Convert the fields to the names instead of descriptions which we used to show the user
     foreach($fields as $fieldDesc=> $fieldName) {
         foreach ($selectedProj->forms[$form]["fields"] as $fieldMetaDataName => $fieldMetaDataLabel) {
-            if ($fieldName == $fieldMetaDataLabel) {
+            $strippedFieldLabel = str_replace( "<u>", "", $fieldMetaDataLabel);
+            if ($fieldName == $strippedFieldLabel) {
                 if (empty($project_field_names)) {
-                    $project_field_names[$fieldMetaDataName] = $fieldMetaDataLabel;
+                    $project_field_names[$fieldMetaDataName] = $strippedFieldLabel;
                 } else {
-                    $project_field_names = array_merge($project_field_names, array($fieldMetaDataName => $fieldMetaDataLabel));
+                    $project_field_names = array_merge($project_field_names, array($fieldMetaDataName => $strippedFieldLabel));
                 }
                 break;
             }
@@ -120,7 +123,9 @@ if ($action == 'get_projects') {
         "key_event"     => $key_event,
         "key_form"      => $key_form,
         "key_field"     => $key_field,
-        "fields"        => $project_field_names
+        "fields"        => $project_field_names,
+        "file"          => $file,
+        "title"         => $title
     );
 
     list($config_names, $config_field_after, $config_info)  = getConfigs();
@@ -239,10 +244,28 @@ function getProjects($selected_project = null) {
         $proj_id = $row['project_id'];
         $title = $row['app_title'];
         $datalist .= "<option value='" . projectLabel($proj_id, $title) . "'></option>";
-        if ($proj_id == $this_proj_id) {
-            $input =  "<input class='form-control' id='selected_proj' name='selected_proj' list='proj' value='" . projectLabel($proj_id, $title) . "' onclick='getSelectedProject()' onchange='getSelectedProject()'>";
+        if ($this_proj_id == $proj_id) {
+            $input =  "<input class='form-control' id='selected_proj' name='selected_proj' list='proj' value ='" . projectLabel($proj_id, $title) . "' onclick='getSelectedProject()' onchange='getSelectedProject()'>";
         }
     }
+
+    // Add an option to select an algorithm file which will fetch the data for display
+    // We are putting the algorithm files in their own directory based on pid because we don't want just anyone to have access
+    // to this data.  Users can only select custom scripts that are in their directory '/embedded_data_tables_v9.9.9/algorithms/pidxxxx'.
+    $filelist = scandir($module->getModulePath() . "datasource/p" . $pid);
+    if (!empty($filelist)) {
+        $datalist .= "<option value='---  Custom Script  ---'></option>";
+        foreach ($filelist as $filekey => $filename) {
+            // Don't add any files that start with a '.'
+            if (substr($filename, 0, 1) != '.') {
+                $datalist .= "<option value='$filename'></option>";
+                if ($this_proj_id == $filename) {
+                    $input =  "<input class='form-control' id='selected_proj' name='selected_proj' list='proj' value ='" . $filename . "' onclick='getSelectedProject()' onchange='getSelectedProject()'>";
+                }
+            }
+        }
+    }
+
     $datalist .= "</datalist>";
 
     return $input . $datalist;
@@ -492,73 +515,99 @@ function getAvailableFields($selectedProj, $form) {
 
         <div class="container">
 
-            <div class="row" id="config_id" style="display: inline;" >
+            <div class="accordion" id="accordionDisplays">
                 <div>
-                    <label class="col-form-label"><b>Embedded Table Name - select an existing setup or create a new one</b></label>
-                </div>
-                <div>
-                    <?php echo getSavedConfigs(); ?>
-                    <p id="edt_name_check"></p>
+                    <button class="clickable"  data-target="setup" data-parent="#accordionDisplays" onclick="toggleButton('setup')">
+                        Create, modify or delete a configuration
+                    </button>
+                    <div class="collapse" id="setup_collapse" style="display:none;">
+
+                        <div class="row" id="config_id" style="display: inline;" >
+                            <div>
+                                <label class="col-form-label"><b>Embedded Table Name - select an existing setup or create a new one</b></label>
+                            </div>
+                            <div>
+                                <?php echo getSavedConfigs(); ?>
+                                <p id="edt_name_check"></p>
+                            </div>
+                        </div>
+
+                        <div class="row" id="projects_id">
+                            <div>
+                                <label class="col-form-label"><b>Select the project where the data resides:</b></label>
+                            </div>
+                            <div id="project_list_id">
+                            </div>
+                        </div>
+
+                        <div class="row" id="arm_id">
+                            <div>
+                                <label class="col-form-label"><b>There is more than one arm in this project, please select the arm you want to use:</b></label>
+                            </div>
+                            <div id="arm_list_id">
+                                <p id="arms_noselection_check"></p>
+                            </div>
+                       </div>
+
+                        <div class="row" id="form_id">
+                            <div>
+                                <label class="col-form-label"><b>Select the type of data you want to use:</b></label>
+                            </div>
+                            <div id="form_list_id">
+                            </div>
+                        </div>
+
+                        <div class="row" id="key_id">
+                            <div>
+                                <label class="col-form-label"><b>Select the foreign key you want to use in your data project:</b></label>
+                            </div>
+                            <div id="key_list_id">
+                            </div>
+                        </div>
+
+                        <div id="fields">
+                            <h6 id="instructions">
+                                <kbd>Click</kbd> to select individual items<br>
+                                <kbd>Ctrl</kbd> + <kbd>Click</kbd> to select multiple items<br>
+                            </h6>
+
+                            <div class="form-group row">
+                                <label class="col-sm-6 col-form-label"><b>Selectable Fields</b></label>
+                                <label class="col-sm-6 col-form-label"><b>Selected Fields (in order they will appear in the display)</b><br><p id="selected_fields_check"></p></label>
+                                <ul id="fields_selectable" class="col-sm-6">
+                                </ul>
+
+                                <ul id="fields_selected" class="col-sm-6">
+                                </ul>
+                            </div>
+
+                            <label class="col-form-label col-sm-12"><b>Enter a display title (optional):</b></label>
+                            <div>
+                                <input id="title">
+                            </div>
+
+                        </div>
+
+                        <div class="row" id="buttons_id">
+                            <div>
+                                <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
+                                <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="row" id="projects_id">
-                <div>
-                    <label class="col-form-label"><b>Select the project where the data resides:</b></label>
-                </div>
-                <div id="project_list_id">
-                </div>
-            </div>
-
-            <div class="row" id="arm_id">
-                <div>
-                    <label class="col-form-label"><b>There is more than one arm in this project, please select the arm you want to use:</b></label>
-                </div>
-                <div id="arm_list_id">
-                    <p id="arms_noselection_check"></p>
-                </div>
-           </div>
-
-            <div class="row" id="form_id">
-                <div>
-                    <label class="col-form-label"><b>Select the type of data you want to use:</b></label>
-                </div>
-                <div id="form_list_id">
+            <div>
+                <button class="clickable"  data-target="displays" data-parent="#accordionDisplays" onclick="toggleButton('displays')">
+                    Organize the configurations
+                </button>
+                <div class="collapse" id="displays_collapse" style="display:none;">
+                    TBD
                 </div>
             </div>
 
-            <div class="row" id="key_id">
-                <div>
-                    <label class="col-form-label"><b>Select the foreign key you want to use in your data project:</b></label>
-                </div>
-                <div id="key_list_id">
-                </div>
-            </div>
-
-
-            <div id="fields">
-                <h6 id="instructions">
-                    <kbd>Click</kbd> to select individual items<br>
-                    <kbd>Ctrl</kbd> + <kbd>Click</kbd> to select multiple items<br>
-                </h6>
-
-                <div class="form-group row">
-                    <label class="col-sm-6 col-form-label"><b>Selectable Fields</b></label>
-                    <label class="col-sm-6 col-form-label"><b>Selected Fields (in order they will appear in the display)</b><br><p id="selected_fields_check"></p></label>
-                    <ul id="fields_selectable" class="col-sm-6">
-                    </ul>
-
-                    <ul id="fields_selected" class="col-sm-6">
-                    </ul>
-                </div>
-
-                <div align="left">
-                    <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
-                    <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>
-                </div>
-           </div>
-
-        </div>  <!-- END CONTAINER -->
+         </div>  <!-- END CONTAINER -->
     </body>
 </html>
 
@@ -568,6 +617,16 @@ function getAvailableFields($selectedProj, $form) {
     document.getElementById("projects_id").style.display = "none";
     document.getElementById("arm_id").style.display = "none";
     document.getElementById("key_id").style.display = "none";
+    document.getElementById("buttons_id").style.display = "none";
+
+    function toggleButton(buttonName) {
+        var display = document.getElementById(buttonName + '_collapse');
+        if (display.style.display === 'none') {
+            display.style.display = 'block';
+        } else {
+            display.style.display = 'none';
+        }
+    }
 
     $("ul").on('click', 'li', function (e) {
 
@@ -621,27 +680,22 @@ function getAvailableFields($selectedProj, $form) {
             if (isNaN(project_id)) {
                 project_id = "";
             }
+        } else if (project_title.includes(".php")) {
+            project_id = project_title;
         }
+
         return project_id;
-    }
-
-    function getSelectedFormElement() {
-
-        var selected_option = "";
-        var selected_data = document.getElementById("forms").value;
-        if (selected_data !== "" && selected_data.substring(0,3) !== '---') {
-            selected_option = $('#form_list').find("[value='" + selected_data + "']");
-        }
-
-        return selected_option;
     }
 
     function getSelectedProject() {
         var project_id = getProjectID();
-        if (project_id !== "") {
-            edt.getArmsList(project_id, null);
+
+        if (project_id === "") {
+            //document.getElementById("form_id").style.display = "none";
+        } else if (isNaN(project_id)) {
+            document.getElementById("buttons_id").style.display = "inline";
         } else {
-            document.getElementById("form_id").style.display = "none";
+            edt.getArmsList(project_id, null);
         }
     }
 
@@ -677,6 +731,17 @@ function getAvailableFields($selectedProj, $form) {
             document.getElementById("forms").value = "";
             document.getElementById("fields").style.display = "none";
         }
+    }
+
+    function getSelectedFormElement() {
+
+        var selected_option = "";
+        var selected_data = document.getElementById("forms").value;
+        if (selected_data !== "" && selected_data.substring(0,3) !== '---') {
+            selected_option = $('#form_list').find("[value='" + selected_data + "']");
+        }
+
+        return selected_option;
     }
 
     function getSelectedKey() {
@@ -764,43 +829,47 @@ function getAvailableFields($selectedProj, $form) {
 
         var submit = 1;
 
-        // Retrieve selected fields. If there is not at least one field selected, don't save
-        var field_array = getSelectedFields();
-        if (field_array.length === 0) {
-            document.getElementById("selected_fields_check").innerHTML = "* Must select at least one field";
-            submit = 0;
-        }
-
-        var key_form = null;
-        var key_field = null;
-        var key_event = null;
-        var selected_key = getSelectedKey();
-        if (selected_key != null) {
-            key_form = selected_key.data("form");
-            key_field = selected_key.data("field");
-            key_event = selected_key.data("event");
-       }
-
-        var project_id = getProjectID();
-        var selected_form = getSelectedFormElement();
-        if (selected_form !== "") {
-            var arm = selected_form.data("arm");
-            var event = selected_form.data("event");
-            var type = selected_form.data("type");
-            var form = selected_form.data("form");
-            var type_value = document.getElementById("forms").value
-        } else {
-            submit = 0;
-        }
-
-        // Retrieve this config name
+        // Retrieve this config name and project_id
         var table_name = document.getElementById("edt_name").value;
-        if (table_name === "") {
-            submit = 0;
-        }
+        var project_id = getProjectID();
+        var title = document.getElementById("title").value;
 
-        if (submit > 0) {
-            edt.saveConfig(table_name, project_id, arm, event, type, field_array, form, type_value, key_event, key_form, key_field);
+        // If the project_id is a filename of a custom algorithm, we don't need anymore information
+        if (project_id.includes(".php")) {
+            edt.saveConfig(table_name, "", "", "", "file", "", "", "", "", "", "", project_id, title);
+        } else {
+
+            // Retrieve selected fields. If there is not at least one field selected, don't save
+            var field_array = getSelectedFields();
+            if (field_array.length === 0) {
+                document.getElementById("selected_fields_check").innerHTML = "* Must select at least one field";
+                submit = 0;
+            }
+
+            var key_form = null;
+            var key_field = null;
+            var key_event = null;
+            var selected_key = getSelectedKey();
+            if (selected_key != null) {
+                key_form = selected_key.data("form");
+                key_field = selected_key.data("field");
+                key_event = selected_key.data("event");
+            }
+
+            var selected_form = getSelectedFormElement();
+            if (selected_form !== "") {
+                var arm = selected_form.data("arm");
+                var event = selected_form.data("event");
+                var type = selected_form.data("type");
+                var form = selected_form.data("form");
+                var type_value = document.getElementById("forms").value
+            } else {
+                submit = 0;
+            }
+
+            if (submit > 0) {
+                edt.saveConfig(table_name, project_id, arm, event, type, field_array, form, type_value, key_event, key_form, key_field, "", title);
+            }
         }
     }
 
@@ -928,6 +997,7 @@ function getAvailableFields($selectedProj, $form) {
             } else {
                 document.getElementById("fields_selectable").innerHTML = html;
                 document.getElementById("fields").style.display = "inline";
+                document.getElementById("buttons_id").style.display = "inline";
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log("Failed in getFieldNames for instrument " + instrument + " and event " + event);
@@ -964,7 +1034,7 @@ function getAvailableFields($selectedProj, $form) {
         });
     };
 
-    edt.saveConfig = function (table_name, project_id, arm, event, type, field_array, form, type_value, key_event, key_form, key_field) {
+    edt.saveConfig = function (table_name, project_id, arm, event, type, field_array, form, type_value, key_event, key_form, key_field, file, title) {
 
         // Make the API call to save this setup for later display
         $.ajax({
@@ -983,7 +1053,9 @@ function getAvailableFields($selectedProj, $form) {
                 "key_event"  : key_event,
                 "key_form"   : key_form,
                 "key_field"  : key_field,
-                "type_value" : type_value
+                "type_value" : type_value,
+                "file"       : file,
+                "title"      : title
             },
             success:function(html) {
             },
@@ -992,7 +1064,7 @@ function getAvailableFields($selectedProj, $form) {
             }
 
         }).done(function (url) {
-            alert("Your configuration " + table_name + " has been successfully saved!");
+            alert("Your configuration '" + table_name + "' has been successfully saved!");
             location.reload();
 
         }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -1018,7 +1090,7 @@ function getAvailableFields($selectedProj, $form) {
             }
 
         }).done(function (url) {
-            alert("Your configuration " + table_name + " has been successfully deleted!");
+            alert("Your configuration '" + table_name + "' has been successfully deleted!");
             location.reload();
 
         }).fail(function (jqXHR, textStatus, errorThrown) {
@@ -1045,9 +1117,14 @@ function getAvailableFields($selectedProj, $form) {
 
         }).done(function (data) {
 
-            // Only preload data if we have a previously saved config
             var data_array = JSON.parse(data);
             var project_id = data_array.project_id;
+
+            // Reload the title
+            if (data_array.title != "") {
+                document.getElementById("title").value = data_array.title;
+            }
+
             if (project_id != null) {
 
                 // Retrieve list of projects this user has access to
@@ -1068,7 +1145,7 @@ function getAvailableFields($selectedProj, $form) {
                 // Make an array out of the json field object
                 var fields = [];
                 var keys = Object.keys(data_array.fields);
-                keys.forEach(function(key) {
+                keys.forEach(function (key) {
                     fields.push(data_array.fields[key]);
                 });
 
@@ -1085,7 +1162,14 @@ function getAvailableFields($selectedProj, $form) {
                         }
                     }
                 }
+
+            } else {
+                // Retrieve list of projects this user has access to
+                edt.getProjects(data_array.file);
             }
+
+            // Always display the Save and Delete buttons
+            document.getElementById("buttons_id").style.display = "inline";
 
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log("Failed in set_projectID for project_id " + project_id);

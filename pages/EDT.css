@@ -3,7 +3,7 @@
     height: 100%;
     width: 100%;
     font-size: small;
-    overflow: hidden;
+    overflow-x: scroll;
     box-sizing: content-box;
 }
 
@@ -19,6 +19,7 @@ ul {
     list-style-type: none;
     overflow-y: scroll;
     overflow-x: hidden;
+    margin: 0px;
 }
 
 li {
@@ -33,8 +34,7 @@ li.selected {
 input[type=submit] {
     background-color: #000000;
     color: #fff;
-    width: 120px;
-    height: 30px;
+    width: 20% !important;
     border-radius: 5px;
     font-size: large;
 }
@@ -45,12 +45,16 @@ p {
 
 #instructions {
     margin-top: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 
-button {
+#space {
+    margin-top: 25px !important;
+}
+
+.clickable {
     width: 100%;
-    font-size: large;
+    font-size: medium;
     font-weight: bold;
     margin-top: 10px !important;
     color: maroon;
@@ -59,13 +63,27 @@ button {
 
 table {
     width: 100% !important;
+    margin-bottom: 15px !important;
+    border-spacing: 2px;
 }
-input.button {
-    width: 20% !important;
-}
+
 
 input {
     width: 100% !important;
-    margin: 0;
+    font-size: large;
 }
 
+th {
+    color: white;
+    background-color: darkgrey;
+}
+
+caption {
+    caption-side: top !important;
+    font-size: large;
+    font-weight: bold;
+}
+
+#print_button {
+    float: right;
+}
