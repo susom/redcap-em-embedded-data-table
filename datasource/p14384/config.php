@@ -1,13 +1,33 @@
 <?php
 
-$main_pid = 14384;
-$first_event = 87428;
-$diary_form = 'diary_entry';
-$ae_form = 'adverse_event';
-$diary_event_id = 98686;
-$ae_event_id = 87428;
-$clinic_visit_form = 'clinic_visit';
-$survey_date_field = 'survey_date';
+if (strpos($module->getUrl("EDT.php"),'redcap-dev.stanford.edu') !== false) {
+    $main_pid = 14384;
+    $first_event = 87428;
+    $diary_form = 'diary_entry';
+    $ae_form = 'adverse_event';
+    $diary_event_id = 87657;
+    $ae_event_id = 87428;
+    $clinic_visit_form = 'clinic_visit';
+    $survey_date_field = 'survey_date';
+} else if (strpos($module->getUrl("EDT.php"),'redcap.stanford.edu') !== false) {
+    $main_pid = 14384;
+    $first_event = 87428;
+    $diary_form = 'diary_entry';
+    $ae_form = 'adverse_event';
+    $diary_event_id = 98686;
+    $ae_event_id = 87428;
+    $clinic_visit_form = 'clinic_visit';
+    $survey_date_field = 'survey_date';
+} else if (strpos($module->getUrl("EDT.php"),'localhost') !== false) {
+    $main_pid = 41;
+    $first_event = 100;
+    $diary_form = 'multi_oit_diary';
+    $ae_form = 'adverse_event';
+    $diary_event_id = 110;
+    $ae_event_id = 100;
+    $clinic_visit_form = 'clinic_visit';
+    $survey_date_field = 'survey_date';
+}
 
 function getHeader($pid, $record_id) {
 

@@ -80,7 +80,6 @@ class dosing_timeClass
 
         // Sort by survey_day_number
         ksort($sorting_data, SORT_NUMERIC);
-        $module->emLog("Sorted data: " . json_encode($sorting_data));
 
         $display_data = array();
         foreach($sorting_data as $day => $info) {
