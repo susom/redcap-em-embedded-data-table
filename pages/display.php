@@ -126,6 +126,7 @@ function getOneDisplay($id, $config_info)
     }
 
     // If this display type is a repeating form, use the repeating form utilities to create the table
+    $module->emLog("Display $id: config info: " . json_encode($config_info));
     switch ($config_info["type"]) {
         case "repeatingForm":
 
@@ -185,7 +186,7 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
 
     // First do a query to see which record(s) in the data project fit our filter
     if (empty($config_info['key_field'])) {
-        $records = array($record_id);
+        $recordList = array($record_id => $record_id);
     } else {
         $filter = "[" . $config_info['key_field'] . "] = '$record_id'";
         $recordList = REDCap::getData($config_info["project_id"], 'array', null, array_keys($config_info["fields"]),
