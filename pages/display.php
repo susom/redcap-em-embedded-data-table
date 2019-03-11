@@ -15,32 +15,107 @@ require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
 
 $pid = isset($_GET['pid']) && !empty($_GET['pid']) ? $_GET['pid'] : null;
 $record_id = isset($_GET['record']) && !empty($_GET['record']) ? $_GET['record'] : null;
+$displays = isset($_GET['displays']) && !empty($_GET['displays']) ? $_GET['displays'] : null;
+$title = isset($_GET['title']) && !empty($_GET['title']) ? $_GET['title'] : null;
+DEFINE(PROJECT_PID, $pid);
+$user = USERID;
+
+if (empty($pid)) {
+    echo "<h6>The displays are associated with a project.  Please enter a project and try again!</h6>";
+    return;
+}
 if (empty($record_id)) {
     echo "<h6>The displays are associated with a record. Please select a record and try again!</h6>";
     return;
 }
 
-DEFINE(PROJECT_PID, $pid);
-$user = USERID;
+// Retrieve a list of all setups saved
+list($configNames, $config_info) = getConfigs();
 
-function getDisplay($config_name)
-{
-    global $module, $record_id;
+// If a display list was no given via GET, display all displays
+if (empty($displays)) {
+    $displayList = $configNames;
+} else {
+    $displayList = explode(',', $displays);
+}
 
-    // Retrieve the saved configurations
-    list($config_name_list, $config_field_list, $config_info_list) = getConfigs();
+function getTitle() {
+    global $title, $record_id, $module;
 
-    // Look for our config
-    for ($icount = 0; $icount < count($config_name_list); $icount++) {
-        if ($config_name_list[$icount] == $config_name) {
-            $config_info = $config_info_list[$icount];
-            break;
+    // Take out the quotes
+    $new_title = "";
+    $title  = str_replace('"', '', $title);
+    $title_array = explode(" ", $title);
+
+    // Add the record number to display
+    foreach($title_array as $word) {
+
+        $location = strpos($word, "$");
+        if ($location !== false) {
+            if ($location == 0) {
+                // This is the standard case where there are blanks around the variable name
+                $new_variable = substr($word, 1);
+                $value = ${$new_variable};
+            } else if ($location === 1) {
+                // We assume this is a special case where we have () around the variable
+                $length = strlen($word);
+                $new_variable = substr($word,2, $length-3);
+                $value = '(' . ${$new_variable} . ')';
+            }
+            else {
+                // We assume the variable is starting at location to the end of the word
+                $new_variable = substr($word, $location+1);
+                $first_part = substr($word, 0, $location);
+                $value =  $first_part . ${$new_variable};
+            }
+            //$module->emLog("Final New variable: $value");
+
+        } else {
+            $value = $word;
+        }
+
+        // Add the next word to the title with option variable
+        if (empty($new_title)) {
+            $new_title = $value;
+        } else {
+            $new_title .= ' ' . $value;
         }
     }
 
-    if (empty($config_info)) {
-        return null;
+    return $new_title;
+}
+
+function getAllDisplays() {
+    global $displayList, $config_info, $module;
+
+    $html = '<div class="accordion" id="accordionDisplays">';
+
+    // Loop over each desired config
+    foreach($displayList as $display) {
+        $config = $config_info[$display];
+        $config_id = strtolower(str_replace(' ', '_', $display));
+
+        $html .= '<div>';
+        $html .=    '<button class="clickable" data-target="'.$config_id.'" data-parent="#accordionDisplays" onclick="toggleButton('."'".$config_id."')" . '">';
+        $html .=    $display;
+        $html .=    '</button>';
+        $html .=    '<div class="collapse" id="'.$config_id.'_collapse" style="display:block;">';
+        $html .=        '<div id="space">';
+        $html .=        '</div>';
+        $html .=        getOneDisplay($config_id, $config);
+        $html .=    '</div>';
+        $html .= '</div>';
+
+        $html .= '<div></div>';
     }
+
+    $html .= '</div>';
+    return $html;
+}
+
+function getOneDisplay($id, $config_info)
+{
+    global $module, $record_id;
 
     // Retrieve the data dictionary in case we need to convert labels and field names
     if (!empty($config_info["project_id"])) {
@@ -49,9 +124,6 @@ function getDisplay($config_name)
             $module->emError("Cannot retrieve project data dictionary for displays for pid " . $config_info["project_id"]);
         }
     }
-
-    // In case config name has spaces, substitute with _ and make it all lower case
-    $id = strtolower(str_replace(' ', '_', $config_name));
 
     // If this display type is a repeating form, use the repeating form utilities to create the table
     switch ($config_info["type"]) {
@@ -66,8 +138,9 @@ function getDisplay($config_name)
 
             break;
         case "events":
+        case "repeatingEvents":
 
-            // Retrieve data and generate display
+           // Retrieve data and generate display
             $return_data = retrieveDataAcrossEvents($selectedProj, $config_info, $record_id);
             $header = $return_data["header"];
             $data = $return_data["data"];
@@ -108,7 +181,7 @@ function getDisplay($config_name)
 
 function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id) {
 
-    global $module, $pid;
+    global $module;
 
     // First do a query to see which record(s) in the data project fit our filter
     if (empty($config_info['key_field'])) {
@@ -147,7 +220,8 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
     }
 
     // Add the record/instance column to the header and take out the primary key if it was added  separately
-    $displayHeader = array_merge(array("Instance"), $config_info["fields"]);
+    $header = extractHeaders($config_info["fields"]);
+    $displayHeader = array_merge(array("Instance"), $header);
     unset($displayHeader[$selectedProj->table_pk]);
     $return_data = array("header" => $displayHeader,
                          "data" => $displayData);
@@ -158,7 +232,7 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
 
 function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
 
-    global $module, $pid;
+    global $module;
 
     // Retrieve data for the display
     if (empty($config_info['key_field'])) {
@@ -179,8 +253,15 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
         }
     }
 
+    // See if we are retrieving data from an event
+    if (is_numeric($config_info["event"])) {
+        $eventList = array($config_info["event"]);
+    } else {
+        $eventList = null;
+    }
+
     // Now that we have the list of records we want to retrieve, get the fields
-    $data = REDCap::getData($config_info["project_id"], 'array', $records, array_keys($config_info["fields"]));
+    $data = REDCap::getData($config_info["project_id"], 'array', $records, array_keys($config_info["fields"]), $eventList);
 
     // Only display rows which have a value.  If the linking key is in a different event than the other data, there will be
     // records for events which have data even though these fields do not belong to them.
@@ -190,29 +271,57 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
             $fieldNotNullCount = 0;
             $fieldArray = array();
 
-            $fieldArray[""] = $selectedProj->eventInfo[$eventId]["name"];
-            foreach ($config_info["fields"] as $fieldname => $fieldlabel) {
-                $fieldArray[$fieldname] = getLabel($selectedProj, $fieldname, $eventInfo[$fieldname]);
-                if (!empty($fieldArray[$fieldname])) $fieldNotNullCount++;
-            }
+            // Look to see if this is a repeating instance or just one
+            if ($eventId == 'repeat_instances') {
+                foreach($eventInfo as $repeatEventId => $repeatEventInfo) {
+                    foreach($repeatEventInfo as $formName => $eventData) {
 
-            // Add a link to the record if the data project is not the display project
-            if ($selectedProj->project_id != $pid) {
-                $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=" . trim($config_info["project_id"]) . "&arm=" . $arm_num . "&id=" . $record . "'>" . $record . "</a>";
+                        foreach ($eventData as $instanceId => $instanceInfo) {
+
+                            // Add a link to the record/instance
+                            $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=" . trim($config_info["project_id"]) .
+                                "&event_id=" . $repeatEventId . "&id=" . $record .  "&instance=" . $instanceId ."'>" . $record . "-" . $instanceId . "</a>";
+                            $fieldArray[$selectedProj->table_pk] = $record_link;
+
+                            // Add the rest of the requested fields
+                            foreach ($config_info["fields"] as $fieldname => $fieldlabel) {
+                                $fieldArray[$fieldname] = getLabel($selectedProj, $fieldname, $instanceInfo[$fieldname]);
+                                if (!empty($fieldArray[$fieldname])) $fieldNotNullCount++;
+                            }
+
+                            // We found some data that was not null so save it for display
+                            if ($fieldNotNullCount > 0) {
+                                $displayData[] = $fieldArray;
+                            }
+                        }
+                    }
+                }
+
+            } else {
+
+                // Add a link to the record in the data project
+                $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=".trim($config_info["project_id"]).
+                    "&arm=".$arm_num."&event=".$eventId."&id=".$record."'>" . $record . "</a>";
                 $fieldArray[$selectedProj->table_pk] = $record_link;
-            }
 
-            // We found some data that was not null so save it for display
-            if ($fieldNotNullCount > 1) {
-                $displayData[] = $fieldArray;
+                foreach ($config_info["fields"] as $fieldname => $fieldlabel) {
+                    $fieldArray[$fieldname] = getLabel($selectedProj, $fieldname, $eventInfo[$fieldname]);
+                    if (!empty($fieldArray[$fieldname])) $fieldNotNullCount++;
+                }
+
+                // We found some data that was not null so save it for display
+                if ($fieldNotNullCount > 0) {
+                    $displayData[] = $fieldArray;
+                }
             }
         }
     }
 
     // Add the event to the header so the user knows where the data is from and create display
-    $header = array_merge(array("Event"), $config_info["fields"]);
+    $header = extractHeaders($config_info["fields"]);
+    $display_headers = array_merge(array("Record"), $header);
 
-    $return_data = array("header" => $header,
+    $return_data = array("header" => $display_headers,
                          "data" => $displayData);
 
     return $return_data;
@@ -244,7 +353,8 @@ function retrieveDataUsingPrimaryKey($selectedProj, $config_info, $record_id) {
         }
     }
 
-    $return_data = array("header" => $config_info["fields"],
+    $header = extractHeaders($config_info["fields"]);
+    $return_data = array("header" => $header,
                          "data" => $formatted_data);
     return $return_data;
 }
@@ -276,6 +386,18 @@ function retrieveDataUsingFile($config_info, $record_id) {
     return $return_data;
 }
 
+function extractHeaders($fields) {
+
+    $header = array();
+    // Split the field name from field label
+    foreach ($fields as $field) {
+        $field_pieces = explode(']', $field);
+        $header[] = trim($field_pieces[1]);
+    }
+
+    return $header;
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -305,34 +427,38 @@ function retrieveDataUsingFile($config_info, $record_id) {
 
     </head>
     <body>
-        <h3 style="text-align: center">Configured Data Table Displays</h3>
+        <h3 style="text-align: center"><?php echo getTitle(); ?></h3>
 
         <div class="container">
+
+            <?php echo getAllDisplays(); ?>
+            <!--
             <div class="accordion" id="accordionDisplays">
 
-                <?php list($configNames, $config_fields, $config_info) = getConfigs();
+                < ?php list($configNames, $config_info) = getConfigs();
                     foreach($configNames as $config) {
                         $config_id = strtolower(str_replace(' ', '_', $config));
                 ?>
 
                 <div>
-                    <button class="clickable"  data-target="<?php echo $config_id; ?>" data-parent="#accordionDisplays" onclick="toggleButton('<?php echo $config_id; ?>')">
-                        <?php echo $config; ?>
+                    <button class="clickable"  data-target="< ?php echo $config_id; ?>" data-parent="#accordionDisplays" onclick="toggleButton('< ?php echo $config_id; ?>')">
+                        < ?php echo $config; ?>
                     </button>
-                    <div class="collapse" id="<?php echo $config_id; ?>_collapse" style="display:none;">
+                    <div class="collapse" id="< ?php echo $config_id; ?>_collapse" style="display:none;">
                         <div id="space">
                         </div>
-                        <?php echo getDisplay($config); ?>
+                        < ?php echo getDisplay($config); ?>
                     </div>
                 </div>
 
                 <div></div>
 
-                <?php
+                < ?php
                     }
                 ?>
 
             </div>
+            -->
 
         </div>  <!-- END CONTAINER -->
     </body>

@@ -57,11 +57,12 @@ if ($action == 'get_projects') {
 } else if ($action == 'get_fields') {
     $selected_project = isset($_POST['project_id']) && !empty($_POST['project_id']) ? $_POST['project_id'] : null;
     $form = isset($_POST['form']) && !empty($_POST['form']) ? $_POST['form'] : null;
+    $event = isset($_POST['event']) && !empty($_POST['event']) ? $_POST['event'] : null;
 
     if (empty($selectedProj) || $selectedProj->project_id !== $selected_project) {
         $selectedProj = getProjDataDictionary($selected_project);
     }
-    $result = getAvailableFields($selectedProj, $form);
+    $result = getAvailableFields($selectedProj, $event, $form);
 
     print $result;
     return;
@@ -80,6 +81,7 @@ if ($action == 'get_projects') {
     $table_name = isset($_POST['table_name']) && !empty($_POST['table_name']) ? $_POST['table_name'] : null;
     $file = isset($_POST['file']) && !empty($_POST['file']) ? $_POST['file'] : null;
     $title = isset($_POST['title']) && !empty($_POST['title']) ? $_POST['title'] : null;
+    $module->emLog("Table name: " . $table_name);
 
     if (empty($selectedProj) || $selectedProj->project_id !== $selected_project) {
         $selectedProj = getProjDataDictionary($selected_project);
@@ -96,19 +98,11 @@ if ($action == 'get_projects') {
         }
     }
 
-    // Convert the fields to the names instead of descriptions which we used to show the user
-    foreach($fields as $fieldDesc=> $fieldName) {
-        foreach ($selectedProj->forms[$form]["fields"] as $fieldMetaDataName => $fieldMetaDataLabel) {
-            $strippedFieldLabel = str_replace( "<u>", "", $fieldMetaDataLabel);
-            if ($fieldName == $strippedFieldLabel) {
-                if (empty($project_field_names)) {
-                    $project_field_names[$fieldMetaDataName] = $strippedFieldLabel;
-                } else {
-                    $project_field_names = array_merge($project_field_names, array($fieldMetaDataName => $strippedFieldLabel));
-                }
-                break;
-            }
-        }
+    foreach($fields as $field) {
+        // Split the field name from field label
+        $field_pieces = explode(']', $field);
+        $field_name = trim(substr($field_pieces[0], 1));
+        $project_field_names[$field_name] = $field;
     }
 
     // Now save the data in the external module project setting
@@ -128,26 +122,21 @@ if ($action == 'get_projects') {
         "title"         => $title
     );
 
-    list($config_names, $config_field_after, $config_info)  = getConfigs();
-    $field_after = "test";
+    list($config_names, $config_info)  = getConfigs();
 
     if (empty($config_names)) {
-        setConfigs(array($table_name), array($field_after), array($save_data));
+        setConfigs(array($table_name), array($table_name => $save_data));
     } else {
-
-        // See if this is an existing config that we want to update
-        $index = array_search($table_name, $config_names);
-        if ($index === false) {
-            // This is a new config so add it to the end
+        // See if this is an existing config that we want to update or a new config
+        if (!in_array("$table_name", $config_names)) {
             $config_names = array_merge($config_names, array($table_name));
-            $config_field_after = array_merge($config_field_after, array($field_after));
-            $config_info = array_merge($config_info, array($save_data));
-        } else {
-            // Replace the existing config with this new one
-            $config_field_after[$index] = $field_after;
-            $config_info[$index] = $save_data;
         }
-        setConfigs($config_names, $config_field_after, $config_info);
+
+        // Add or Replace the existing config with this new one
+        $config_info["$table_name"] = $save_data;
+        $module->emLog("List to save: " . json_encode($config_info));
+
+        setConfigs($config_names, $config_info);
     }
 
     return;
@@ -155,15 +144,9 @@ if ($action == 'get_projects') {
 } else if ($action == 'load_config') {
     $config_name = isset($_POST['config_name']) && !empty($_POST['config_name']) ? $_POST['config_name'] : null;
 
-    list($names, $fields, $info) = getConfigs();
-    for ($icount = 0; $icount < count($names); $icount++) {
-        if ($names[$icount] == $config_name) {
-            $this_config = $info[$icount];
-            break;
-        }
-    }
+    list($names, $info) = getConfigs();
 
-    print json_encode($this_config);
+    print json_encode($info[$config_name]);
     return;
 
 } else if ($action == 'get_arms') {
@@ -184,14 +167,17 @@ if ($action == 'get_projects') {
     $table_name = isset($_POST['table_name']) && !empty($_POST['table_name']) ? $_POST['table_name'] : null;
     if (!empty($table_name)) {
 
-        list($config_names, $config_field_after, $config_info)  = getConfigs();
+        list($config_names, $config_info)  = getConfigs();
 
-        $key = array_search($table_name, $config_names);
-        unset($config_names[$key]);
-        unset($config_field_after[$key]);
-        unset($config_info[$key]);
+        // Check to make sure this name exists
+        $index = array_search($table_name, $config_names);
+        if ($index !== false) {
 
-        setConfigs(array_values($config_names), array_values($config_field_after), array_values($config_info));
+            unset($config_names[$index]);
+            unset($config_info[$table_name]);
+
+            setConfigs($config_names, $config_info);
+        }
     }
 
     return;
@@ -203,7 +189,7 @@ require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
 function getSavedConfigs() {
     global $module;
 
-    list($config_names, $config_field_after, $config_info)  = getConfigs();
+    list($config_names, $config_info)  = getConfigs();
 
     $html = '<input class="form-control" name="edt_name" id="edt_name" list="config_name" onchange="getSelectedConfig()">';
     if (count($config_names) > 0) {
@@ -344,9 +330,8 @@ function getDisplayTypeList($selectedProj, $armId) {
 
                 // If the forms list is WHOLE, it means all forms are repeating so add all to the list
                 if ($eventForms == 'WHOLE') {
-                    foreach($selectedProj->eventsForms[$eventId] as $form) {
-                        $repeatEvents .= "<option value='[Arm: $selectedArm] $form - form in repeating event' data-arm='$selectedArmId' data-event='$eventId' data-form='$form' data-type='repeatingEvent'></option>";
-                    }
+                    $event_info_name = $selectedProj->eventInfo[$eventId]["name"];
+                    $repeatEvents .= "<option value='[Arm: $selectedArm] $event_info_name - repeating event' data-arm='$selectedArmId' data-event='$eventId' data-type='repeatingEvents'></option>";
                 } else {
                     // Otherwise add each of the repeating forms
                     foreach ($eventForms as $formName => $formInfo) {
@@ -477,12 +462,23 @@ function getAvailableKeysInDataProject($selectedProj, $arm, $event, $key_event=n
     return $input . $select;
 }
 
-function getAvailableFields($selectedProj, $form) {
+function getAvailableFields($selectedProj, $event, $form) {
     global $module;
     $html = "";
 
-    foreach ($selectedProj->forms[$form]["fields"] as $fieldName => $fieldLabel) {
-        $html .= "<li>$fieldLabel</li>";
+    // If form is empty and event is not, we need to get all fields in that repeating event
+    if (empty($form) and !empty($event)) {
+
+        foreach ($selectedProj->eventsForms[$event] as $forms) {
+            foreach ($selectedProj->forms[$forms]['fields'] as $fields => $field) {
+                $html .= "<li>[$fields] $field</li>";
+            }
+        }
+    } else if (!empty($form)) {
+        // Otherwise get all fields in the form
+        foreach ($selectedProj->forms[$form]["fields"] as $fieldName => $fieldLabel) {
+            $html .= "<li>[$fieldName] $fieldLabel</li>";
+        }
     }
 
     return $html;
@@ -580,15 +576,17 @@ function getAvailableFields($selectedProj, $form) {
                                 <ul id="fields_selected" class="col-sm-6">
                                 </ul>
                             </div>
-
-                            <label class="col-form-label col-sm-12"><b>Enter a display title (optional):</b></label>
-                            <div>
-                                <input id="title">
-                            </div>
-
                         </div>
 
                         <div class="row" id="buttons_id">
+                            <div id="space">
+                            </div>
+                            <label class="col-form-label"><b>Enter a display title (optional):</b></label>
+                            <div>
+                                <input id="title">
+                            </div>
+                            <div id="space">
+                            </div>
                             <div>
                                 <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
                                 <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>
@@ -642,9 +640,7 @@ function getAvailableFields($selectedProj, $form) {
                 item.addClass('selected').siblings().removeClass('selected');
             }
 
-            //////////////////////////////////////////////////////////////////////
             //HERE'S HOW TO PASS THE SELECTED ITEMS TO THE `stop()` FUNCTION:
-
             //Clone the selected items into an array
             var elements = item.parent().children('.selected').clone();
 
@@ -693,8 +689,17 @@ function getAvailableFields($selectedProj, $form) {
         if (project_id === "") {
             //document.getElementById("form_id").style.display = "none";
         } else if (isNaN(project_id)) {
+            document.getElementById("form_id").style.display = "none";
             document.getElementById("buttons_id").style.display = "inline";
+            document.getElementById("arm_id").style.display = "none";
         } else {
+            // Make sure fields farther down are hidden in case they are changing projects
+            document.getElementById("fields").style.display = "none";
+            document.getElementById("form_id").style.display = "none";
+            document.getElementById("arm_id").style.display = "none";
+            document.getElementById("key_id").style.display = "none";
+            document.getElementById("buttons_id").style.display = "none";
+
             edt.getArmsList(project_id, null);
         }
     }
@@ -724,7 +729,7 @@ function getAvailableFields($selectedProj, $form) {
 
             // Go retrieve field names
             clearSelectedFields();
-            edt.getFieldNames(project_id, form);
+            edt.getFieldNames(project_id, event, form);
 
         } else {
             clearSelectedFields();
@@ -895,6 +900,7 @@ function getAvailableFields($selectedProj, $form) {
 
         }).done(function (html) {
             if (html === "") {
+                // If there are no arms to display, then get the next selection which is the display list
                 document.getElementById("arm_id").style.display = "none";
                 edt.getDisplayList(project_id, '*');
             } else {
@@ -921,7 +927,7 @@ function getAvailableFields($selectedProj, $form) {
             success:function(html) {
             },
             error:function(jqXhr, textStatus, errorThrown) {
-                console.log("Error in get_fields request: ", jqXHR, textStatus, errorThrown);
+                console.log("Error in get_projects request: ", jqXHR, textStatus, errorThrown);
             }
 
         }).done(function (html) {
@@ -930,6 +936,12 @@ function getAvailableFields($selectedProj, $form) {
             } else {
                 document.getElementById("project_list_id").innerHTML = html;
                 document.getElementById("projects_id").style.display = "inline";
+
+                // Once the project list is retrieved, also retrieve the arm selection
+                if (project_id == null) {
+                    var selected_projectid = getProjectID();
+                    edt.getArmsList(selected_projectid, '*');
+                }
             }
         }).fail(function (jqXHR, textStatus, errorThrown) {
             console.log("Failed to retrieve list of projects in getProjects");
@@ -955,7 +967,7 @@ function getAvailableFields($selectedProj, $form) {
             success:function(html) {
             },
             error:function(jqXhr, textStatus, errorThrown) {
-                console.log("Error in get_fields request: ", jqXHR, textStatus, errorThrown);
+                console.log("Error in getKeyList request: ", jqXHR, textStatus, errorThrown);
             }
 
         }).done(function (html) {
@@ -973,7 +985,7 @@ function getAvailableFields($selectedProj, $form) {
     };
 
 
-    edt.getFieldNames = function (project_id, form) {
+    edt.getFieldNames = function (project_id, event, form) {
 
         // Make the API call to retrieve list of fields that are selectable
         $.ajax({
@@ -983,6 +995,7 @@ function getAvailableFields($selectedProj, $form) {
             data: {
                 "action"     : "get_fields",
                 "project_id" : project_id,
+                "event"      : event,
                 "form"       : form
             },
             success:function(html) {
@@ -1121,12 +1134,11 @@ function getAvailableFields($selectedProj, $form) {
             var project_id = data_array.project_id;
 
             // Reload the title
-            if (data_array.title != "") {
+            if (data_array.title !== "") {
                 document.getElementById("title").value = data_array.title;
             }
 
-            if (project_id != null) {
-
+            if (project_id !== null) {
                 // Retrieve list of projects this user has access to
                 edt.getProjects(project_id);
 
@@ -1150,7 +1162,7 @@ function getAvailableFields($selectedProj, $form) {
                 });
 
                 // Set selected fields in the selected list and take them out of the selectable list
-                edt.getFieldNames(project_id, data_array.form);
+                edt.getFieldNames(project_id, data_array.event, data_array.form);
                 for (var n = 0; n < fields.length; n++) {
                     var field_list = Array.from(document.querySelectorAll('#fields_selectable>li'));
                     var field_nodes = document.getElementById('fields_selectable');

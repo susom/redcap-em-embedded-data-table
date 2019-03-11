@@ -5,7 +5,7 @@
  * Date: 2019-02-19
  * Time: 09:48
  */
-use \Project;
+//use Project;
 
 function getProjDataDictionary($selected_pid) {
     global $module;
@@ -13,7 +13,7 @@ function getProjDataDictionary($selected_pid) {
     $selectedProj = null;
     if (!empty($selected_pid)) {
         try {
-            $selectedProj = new Project($selected_pid);
+            $selectedProj = new Project($selected_pid, true);
             if ($selectedProj->project_id == $selected_pid) {
                 $selectedProj->setRepeatingFormsEvents();
             } else {
@@ -30,15 +30,13 @@ function getProjDataDictionary($selected_pid) {
 function getConfigs() {
     global $module;
     $config_names = $module->getProjectSetting("config_name");
-    $config_field = $module->getProjectSetting("config_field_after");
     $config_info = $module->getProjectSetting("config_info");
-    return array($config_names, $config_field, $config_info);
+    return array($config_names, $config_info);
 }
 
-function setConfigs($config_names, $config_fields, $config_info) {
+function setConfigs($config_names, $config_info) {
     global $module;
     $module->setProjectSetting("config_name", $config_names);
-    $module->setProjectSetting("config_field_after", $config_fields);
     $module->setProjectSetting("config_info", $config_info);
 }
 
