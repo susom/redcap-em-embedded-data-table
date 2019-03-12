@@ -4,15 +4,21 @@
 function missing_diary_entries($pid, $record_id) {
     global $module;
 
-    $mde_helper = new missing_diary_entriesClass($pid, $record_id);
+    include $module->getModulePath() . "datasource/p" . $pid . "/config.php";
+    $module->emLog("In missing diary entries: " . json_encode($diary_configs));
 
-    $header = array("Dates");
+    if (!empty($diary_configs)) {
+        $mde_helper = new missing_diary_entriesClass($pid, $record_id, $diary_configs);
+
+        $missing_diary = $mde_helper->loadSurveyData();
+
+        $data = $mde_helper->findMissingEntries($missing_diary);
+    } else {
+        $data = array();
+    }
+
     $title = "Summary of Dates for Missing Diary Entries";
-
-    $missing_diary = $mde_helper->loadSurveyData();
-
-    $data = $mde_helper->findMissingEntries($missing_diary);
-
+    $header = array("Dates");
     $return_data = array("title" => $title,
                          "header" => $header,
                          "data" => $data);
@@ -31,15 +37,17 @@ class missing_diary_entriesClass
     private $early_termination_value;
     private $visit_date;
     private $visit_type;
+    private $configs = array();
 
-    function __construct($pid, $record_id) {
+    function __construct($pid, $record_id, $diary_configs) {
 
-        global $module, $main_pid;
+        global $module;
 
         // This initialization routine needs to initialize all project specific parameters necessary to
         // retrieve this data
 
-        if ($pid == $main_pid) {
+        if ($pid == $diary_configs["MAIN_PID"]) {
+            $this->configs = $diary_configs;
             $this->pid = $pid;
             $this->record_id = $record_id;
 
@@ -58,10 +66,10 @@ class missing_diary_entriesClass
 
     public function loadSurveyData() {
 
-        global $module, $diary_event_id;
+        global $module;
 
         // Retrieve Diary Entries
-        $survey_data = REDCap::getData($this->pid, 'array', null, null, array($diary_event_id));
+        $survey_data = REDCap::getData($this->pid, 'array', null, null, array($this->configs["DIARY_EVENT"]));
 
         // Make a list of dates that diary entries were filled out
         $map = $this->makeDateMap($survey_data);
@@ -84,11 +92,12 @@ class missing_diary_entriesClass
 
     private function makeDateMap($survey_data) {
 
-        global $diary_event_id, $survey_date_field;
+        global $module;
 
         $map = array();
-        foreach ($survey_data[$this->record_id]["repeat_instances"][$diary_event_id][""] as $survey_id => $current) {
-            $date = $current[$survey_date_field];
+
+        foreach ($survey_data[$this->record_id]["repeat_instances"][$this->configs["DIARY_EVENT"]][""] as $survey_id => $current) {
+            $date = $current[$this->configs["SURVEY_DATE"]];
             $map[$date] = $survey_id;
         }
         krsort($map);

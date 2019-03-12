@@ -9,12 +9,14 @@ namespace Stanford\EDT;
 /** @var \Stanford\EDT\EDT $module */
 
 use \REDCap;
-require_once ($module->getModulePath() . "datasource/p14384/config.php");
 
 $pid = isset($_GET['data_pid']) && !empty($_GET['data_pid']) ? $_GET['data_pid'] : null;
 $record = isset($_GET['id']) && !empty($_GET['id']) ? $_GET['id'] : null;
 $diary_day = isset($_GET['diary_day']) && !empty($_GET['diary_day']) ? $_GET['diary_day'] : null;
 $symptom = isset($_GET['symptom']) && !empty($_GET['symptom']) ? $_GET['symptom'] : null;
+
+require_once ($module->getModulePath() . "datasource/p14435/config.php");
+//require_once ($module->getModulePath() . "datasource/p" . $pid . "/config.php");
 
 if (empty($record)) {
     echo "<h6>The displays are associated with a record. Please select a record and try again!</h6>";
@@ -25,8 +27,10 @@ if (empty($record)) {
 $primary_key = 'participant_id';
 $ae_field_day = 'diary_day_num_link';
 $ae_field_symptom = 'diary_day_symptom_link';
-$diary_day_num = 'survey_day_number';
+$ae_complete = 'adverse_event_complete';
+$diary_day_num = 'rsp_survey_day_number';
 $diary_symptoms = 'symptoms';
+$visit_date = 'visit_date';
 $symptom_aliases = array(1 => 'edemaface', 2 => 'itchym', 3 => 'itchysk', 4 => 'abpain',
     5 => 'nascon', 6 => 'diarrh', 7 => 'tbreath', 8 => 'tgthroat',
     9 => 'cough', 10 => 'vomit', 11 => 'urtica', 12 => 'hoarse',
@@ -52,9 +56,9 @@ header("Location: " . $ae_url);
 require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
 
 function findNextInstance() {
-    global $module, $pid, $record, $ae_field_day, $ae_event_id, $ae_form, $main_pid;
+    global $module, $pid, $record, $ae_complete, $ae_event_id, $ae_form, $main_pid;
 
-    $instance_data = REDCap::getData($pid, 'array', $record, array($ae_field_day));
+    $instance_data = REDCap::getData($pid, 'array', $record, array($ae_complete));
 
     $instances = $instance_data[$record]["repeat_instances"][$ae_event_id][$ae_form];
     $instance_list = array();
@@ -62,16 +66,17 @@ function findNextInstance() {
         $instance_list[] = $instance;
     }
 
+    $module->emLog("instance list: " . json_encode($instance_list) . ", and next instance " . (max($instance_list) + 1));
     return max($instance_list) + 1;
 }
 
 function getDiaryData() {
 
-    global $module, $pid, $record, $diary_day, $diary_event_id;
+    global $module, $pid, $record, $diary_day, $diary_event_id, $diary_day_num;
 
     $diary_data = REDCap::getData($pid, 'array', $record, null, $diary_event_id);
     foreach($diary_data[$record]["repeat_instances"][$diary_event_id][""] as $instance => $instance_info) {
-        if ($instance_info["survey_day_number"] == $diary_day) {
+        if ($instance_info[$diary_day_num] == $diary_day) {
             $diary_entry = $instance_info;
             break;
         }
@@ -82,15 +87,15 @@ function getDiaryData() {
 
 function getClinicVisits() {
 
-    global $module, $pid, $record;
+    global $module, $pid, $record, $visit_date;
 
-    $visit_data = REDCap::getData($pid, 'array', $record, array("visit_date"));
+    $visit_data = REDCap::getData($pid, 'array', $record, array($visit_date));
 
     $clinic_visits = array();
     foreach($visit_data[$record] as $event_id => $event_data) {
-        if (!empty($event_data["visit_date"])) {
+        if (!empty($event_data[$visit_date])) {
             $event_label = REDCap::getEventNames(false, false, $event_id);
-            $clinic_visits[strtotime($event_data["visit_date"])] = array("visit_date" =>$event_data["visit_date"], "event" => $event_label);
+            $clinic_visits[strtotime($event_data[$visit_date])] = array($visit_date =>$event_data[$visit_date], "event" => $event_label);
         }
     }
 
@@ -100,12 +105,13 @@ function getClinicVisits() {
 
 function createNewAE($new_ae_instance, $diary_data, $clinic_visits)
 {
-    global $module, $symptom_aliases, $symptom, $record, $pid, $ae_form, $ae_event_id, $diary_day, $ae_term_possibilities;
+    global $module, $symptom_aliases, $symptom, $record, $pid, $ae_form, $ae_event_id,
+           $diary_day, $ae_term_possibilities, $ae_field_day, $ae_field_symptom, $survey_date_field;
 
     $data_dict = REDCap::getDataDictionary($pid, 'array');
 
     $prefix = $symptom_aliases[$symptom];
-    $survey_date = $diary_data["survey_date"];
+    $survey_date = $diary_data[$survey_date_field];
     $data_to_save = array();
 
     $data_to_save["participant_id"] = $record;
@@ -149,7 +155,7 @@ function createNewAE($new_ae_instance, $diary_data, $clinic_visits)
     }
 
     // ae_oit_dt (diary_dose_time)
-    $data_to_save["ae_oit_dt"] = $diary_data["survey_date"] . ' ' . $diary_data["diary_dose_time"];
+    $data_to_save["ae_oit_dt"] = $diary_data[$survey_date_field] . ' ' . $diary_data["diary_dose_time"];
 
     // ae_oit_dose (get from clinic_visit?)????
 
@@ -159,11 +165,11 @@ function createNewAE($new_ae_instance, $diary_data, $clinic_visits)
         $data_to_save["ae_start_dt"] = "";
         $data_to_save["ae_outcome"] = 3;
     } else {
-        $data_to_save["ae_start_dt"] = $diary_data["survey_date"] . ' ' . $diary_data[$prefix . "_start"];
+        $data_to_save["ae_start_dt"] = $diary_data[$survey_date_field] . ' ' . $diary_data[$prefix . "_start"];
     }
 
     if ($diary_data[$prefix . "_status"] == 2) {
-        $data_to_save["ae_end_dt"] = $diary_data["survey_date"] . ' ' . $diary_data[$prefix . "_end"];
+        $data_to_save["ae_end_dt"] = $diary_data[$survey_date_field] . ' ' . $diary_data[$prefix . "_end"];
     } else {
         $data_to_save["ae_end_dt"] = "";
     }
@@ -175,11 +181,10 @@ function createNewAE($new_ae_instance, $diary_data, $clinic_visits)
     }
 
     // Populate the reaction event that is prompting this ae record
-    $data_to_save["diary_day_num_link"] = $diary_day;
-    $data_to_save["diary_day_symptom_link"] = $symptom;
+    $data_to_save[$ae_field_day] = $diary_day;
+    $data_to_save[$ae_field_symptom] = $symptom;
     $new_ae_instance_data[$record]['repeat_instances'][$ae_event_id][$ae_form][$new_ae_instance] = $data_to_save;
 
-    $module->emDebug("Saving data raw: " . json_encode($data_to_save));
     $saved_items = REDCap::saveData($pid, 'array', $new_ae_instance_data);
 
     $module->emDebug("Errors: " . json_encode($saved_items["errors"]));

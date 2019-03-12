@@ -4,14 +4,24 @@ function clinical_times($pid, $record_id) {
 
     global $module;
 
-    $ct_helper = new clinical_timesClass($pid, $record_id);
+    // Include the configuration parameters
+    include $module->getModulePath() . "datasource/p" . $pid . "/config.php";
 
-    $main_data = $ct_helper->loadData();
+    if (!empty($diary_configs)) {
+        $module->emLog("Clinical Times Diary configs: " . json_encode($diary_configs));
+
+        $ct_helper = new clinical_timesClass($pid, $record_id, $diary_configs);
+
+        $main_data = $ct_helper->loadData();
+
+        $data = $ct_helper->retrieveClinicVisits($main_data);
+
+    } else {
+        $data = array();
+    }
 
     $title = "Clinic Visits";
-    $header = array('Link','Event Type','Visit Date','Phase','Dose Given in Clinic','New Home Dose');
-
-    $data = $ct_helper->retrieveClinicVisits($main_data);
+    $header = array('Link', 'Event Type', 'Visit Date', 'Phase', 'Dose Given in Clinic', 'New Home Dose');
 
     $return_data = array("title" => $title,
                          "header" => $header,
@@ -25,29 +35,30 @@ class clinical_timesClass
 {
     private $pid;
     private $record_id;
-    private $params = array();
+    private $configs = array();
     private $data_dict = array();
     private $fields = array();
 
-    function __construct($pid, $record_id)
+    function __construct($pid, $record_id, $diary_configs)
     {
-        global $main_pid;
+        global $module;
 
         // This initialization routine needs to initialize all project specific parameters necessary to
         // retrieve this data
-        if ($pid == $main_pid) {
+        if ($pid == $diary_configs["MAIN_PID"]) {
+            $this->configs = $diary_configs;
             $this->pid = $pid;
             $this->record_id = $record_id;
-            $this->data_dict = REDCap::getDataDictionary($main_pid, 'array');
+            $this->data_dict = REDCap::getDataDictionary($diary_configs["MAIN_PID"], 'array');
             $this->fields = array('visit_date','visit_type','clinic_dose_amt','dose_newhome_total');
         }
     }
 
     public function loadData() {
 
-        global $module, $main_pid;
+        global $module;
 
-        $data = REDCap::getData($main_pid, 'array', $this->record_id, $this->fields);
+        $data = REDCap::getData($this->configs["MAIN_PID"], 'array', $this->record_id, $this->fields);
 
         return $data;
     }
@@ -55,7 +66,7 @@ class clinical_timesClass
 
     public function retrieveClinicVisits($main_data) {
 
-        global $module, $main_pid, $clinic_visit_form;
+        global $module;
 
         $options_list['visit_type'] = $this->getDataOptions($this->data_dict['visit_type']);
         $options_list['clinic_dose_amt'] = $this->getDataOptions($this->data_dict['clinic_dose_amt']);
@@ -107,7 +118,7 @@ class clinical_timesClass
 
                         // The label will be the event name and instance number
                         $event_display = $events[$repeat_event_id] ."_". $instance_id;
-                        $survey_link = APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . $main_pid . "&page=" . $clinic_visit_form . "&id=" . $this->record_id .
+                        $survey_link = APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . $this->configs["MAIN_PID"] . "&page=" . $this->configs["CV_FORM"] . "&id=" . $this->record_id .
                             "&event_id=" . $repeat_event_id . "&instance=".$instance_id;
 
                         $table_data['link'] = "<a href='" . $survey_link . "'>" . $this->record_id . "</a>";
@@ -128,7 +139,7 @@ class clinical_timesClass
             } else {
 
                 // LINK: add a custom link field: picked Clinic Form to redirect to, not dosing_form
-                $survey_link = APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . $main_pid . "&page=" . $clinic_visit_form . "&id=" . $this->record_id. "&event_id=" . $event_id;
+                $survey_link = APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . $this->configs["MAIN_PID"] . "&page=" . $this->configs["CV_FORM"] . "&id=" . $this->record_id. "&event_id=" . $event_id;
 
                 // EVENT: Using REDCAp::getEventNames
                 $event_name = $events[$event_id];
@@ -157,8 +168,9 @@ class clinical_timesClass
 
     private function getEvents() {
 
-        global $main_pid;
-        $selectedProjDD = new Project($main_pid);
+        global $module;
+
+        $selectedProjDD = new Project($this->configs["MAIN_PID"]);
         $events = array();
         foreach ($selectedProjDD->eventInfo as $event_id => $event_info) {
             $events[$event_id] = $event_info["name"];

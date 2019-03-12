@@ -2,15 +2,25 @@
 
 function missed_partial_doses($pid, $record_id) {
 
-    $mpd_helper = new missed_partial_dosesClass($pid, $record_id);
+    global $module;
 
-    $survey_data = $mpd_helper->loadSurveyData();
+    include $module->getModulePath() . "datasource/p" . $pid . "/config.php";
+    $module->emLog("In missed partial doses: " . json_encode($diary_configs));
+
+    if (!empty($diary_configs)) {
+        $mpd_helper = new missed_partial_dosesClass($pid, $record_id, $diary_configs);
+
+        $survey_data = $mpd_helper->loadSurveyData();
+
+
+        $data = $mpd_helper->findMissingPartialDoses($survey_data);
+    } else {
+        $data = array();
+    }
 
     $title = "Missed/Partial Doses";
-    $select = array('survey_day_number','survey_date','dose_taken','dose_taken_amt','diary_partial_dose','diary_no_dose','diary_partial_illness','diary_nodose_illness');
-    $header = array('Link','Day Number','Date','Partial or None','If No/Partial Dose, Reason','If No/Partial Dose Due to Illness, Symptoms');
-
-    $data = $mpd_helper->findMissingPartialDoses($survey_data);
+    $select = array('rsp_survey_day_number', 'rsp_survey_date', 'dose_taken', 'dose_taken_amt', 'diary_partial_dose', 'diary_no_dose', 'diary_partial_illness', 'diary_nodose_illness');
+    $header = array('Link', 'Day Number', 'Date', 'Partial or None', 'If No/Partial Dose, Reason', 'If No/Partial Dose Due to Illness, Symptoms');
     $return_data = array("title" => $title,
                          "header" => $header,
                          "data" => $data);
@@ -23,14 +33,14 @@ class missed_partial_dosesClass
 {
     private $pid;
     private $record_id;
+    private $configs;
 
-    function __construct($pid, $record_id)
+    function __construct($pid, $record_id, $diary_configs)
     {
-        global $main_pid;
-
         // This initialization routine needs to initialize all project specific parameters necessary to
         // retrieve this data
-        if ($pid == $main_pid) {
+        if ($pid == $diary_configs["MAIN_PID"]) {
+            $this->configs = $diary_configs;
             $this->pid = $pid;
             $this->record_id = $record_id;
         }
@@ -38,16 +48,16 @@ class missed_partial_dosesClass
 
     public function loadSurveyData() {
 
-        global $module, $diary_event_id;
+        global $module;
 
-        $survey_data = REDCap::getData($this->pid, 'array', null, null, array($diary_event_id));
+        $survey_data = REDCap::getData($this->pid, 'array', null, null, array($this->configs["DIARY_EVENT"]));
 
         return $survey_data;
     }
 
     public function findMissingPartialDoses($survey_data) {
 
-        global $module, $diary_event_id, $diary_form;
+        global $module;
 
         $data_dictionary = REDCap::getDataDictionary($this->pid, 'array');
         $partial_dose = $this->getDataOptions($data_dictionary["diary_partial_dose"]);
@@ -55,10 +65,10 @@ class missed_partial_dosesClass
         $partial_ill = $this->getDataOptions($data_dictionary["diary_partial_illness"]);
         $no_ill = $this->getDataOptions($data_dictionary["diary_nodose_illness"]);
 
-        foreach ($survey_data[$this->record_id]["repeat_instances"][$diary_event_id][""] as $instance_id => $current) {
+        foreach ($survey_data[$this->record_id]["repeat_instances"][$this->configs["DIARY_EVENT"]][""] as $instance_id => $current) {
             // add a custom link field
-           $survey_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT."DataEntry/index.php?pid=".$this->pid."&page=".$diary_form."&id=".$this->record_id;
-            $survey_link .= "&event_id=" . $diary_event_id . "&instance=" . $instance_id;
+           $survey_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT."DataEntry/index.php?pid=".$this->pid."&page=".$this->configs["DIARY_FORM"]."&id=".$this->record_id;
+            $survey_link .= "&event_id=" . $this->configs["DIARY_EVENT"] . "&instance=" . $instance_id;
             $survey_link .= "'>$this->record_id</a>";
 
             // only missed or partial doses
@@ -67,10 +77,10 @@ class missed_partial_dosesClass
                 $table_data[$instance_id]['link'] = $survey_link;
 
                 //Day Number
-                $table_data[$instance_id]['survey_day_number'] = $current['survey_day_number'];
+                $table_data[$instance_id]['rsp_survey_day_number'] = $current['rsp_survey_day_number'];
 
                 //Survey Date
-                $table_data[$instance_id]['survey_date'] = $current['survey_date'];
+                $table_data[$instance_id]['rsp_survey_date'] = $current['rsp_survey_date'];
 
                 //Merged 'dose_taken' U'dose_taken_amt'
                 if (($current['dose_taken'] == '0')) {

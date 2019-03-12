@@ -17,6 +17,7 @@ $pid = isset($_GET['pid']) && !empty($_GET['pid']) ? $_GET['pid'] : null;
 $record_id = isset($_GET['record']) && !empty($_GET['record']) ? $_GET['record'] : null;
 $displays = isset($_GET['displays']) && !empty($_GET['displays']) ? $_GET['displays'] : null;
 $title = isset($_GET['title']) && !empty($_GET['title']) ? $_GET['title'] : null;
+
 DEFINE(PROJECT_PID, $pid);
 $user = USERID;
 
@@ -40,49 +41,66 @@ if (empty($displays)) {
 }
 
 function getTitle() {
-    global $title, $record_id, $module;
+    global $module, $title, $pid, $record_id;
 
-    // Take out the quotes
+    $module->emLog("Input title: " . $title);
+    $data_dictionary = new Project($pid);
+
+    // Each field name will be enclosed in [] so loop until there are no more [
     $new_title = "";
-    $title  = str_replace('"', '', $title);
-    $title_array = explode(" ", $title);
+    $pos = 0;
+    $start_location = strpos($title, '[', $pos);
+    if ($start_location == false) {
+        $new_title = $title;
+    } else {
 
-    // Add the record number to display
-    foreach($title_array as $word) {
-
-        $location = strpos($word, "$");
-        if ($location !== false) {
-            if ($location == 0) {
-                // This is the standard case where there are blanks around the variable name
-                $new_variable = substr($word, 1);
-                $value = ${$new_variable};
-            } else if ($location === 1) {
-                // We assume this is a special case where we have () around the variable
-                $length = strlen($word);
-                $new_variable = substr($word,2, $length-3);
-                $value = '(' . ${$new_variable} . ')';
+        $pieces = explode('[', $title);
+        foreach ($pieces as $piece => $text) {
+            $close_bracket = strpos($text, ']');
+            if ($close_bracket == false) {
+                $new_title .= $text;
+            } else {
+                $field_name = substr($text, 0, $close_bracket);
+                $value = getFirstNonBlankValue($data_dictionary, $field_name);
+                $new_title .= $value;
+                $new_title .= substr($text, $close_bracket+1, strlen($text));
             }
-            else {
-                // We assume the variable is starting at location to the end of the word
-                $new_variable = substr($word, $location+1);
-                $first_part = substr($word, 0, $location);
-                $value =  $first_part . ${$new_variable};
-            }
-            //$module->emLog("Final New variable: $value");
-
-        } else {
-            $value = $word;
-        }
-
-        // Add the next word to the title with option variable
-        if (empty($new_title)) {
-            $new_title = $value;
-        } else {
-            $new_title .= ' ' . $value;
         }
     }
 
     return $new_title;
+}
+
+function getFirstNonBlankValue($data_dictionary, $field_name) {
+    global $module, $pid, $record_id;
+
+    $field_value = "";
+
+    if ($field_name == $data_dictionary->table_pk) {
+        $field_value = $record_id;
+    } else {
+        $return_data = REDCap::getData($pid, 'array', $record_id, array($field_name));
+        foreach ($return_data[$record_id] as $event_num => $event_info) {
+            if ($event_num == 'repeat_instances') {
+                foreach($event_info as $repeat_id => $repeat_info) {
+                    foreach ($repeat_info[""] as $instance_id => $instance_info) {
+                        if (!empty($instance_info[$field_name])) {
+                            $field_value = getLabel($data_dictionary, $field_name, $instance_info[$field_name]);
+                            break 3;
+                        }
+                    }
+                }
+            } else {
+                if (!empty($event_info[$field_name])) {
+                    $field_value = getLabel($data_dictionary, $field_name, $event_info[$field_name]);
+                    break;
+                }
+            }
+        }
+    }
+
+    return $field_value;
+
 }
 
 function getAllDisplays() {
@@ -126,7 +144,8 @@ function getOneDisplay($id, $config_info)
     }
 
     // If this display type is a repeating form, use the repeating form utilities to create the table
-    $module->emLog("Display $id: config info: " . json_encode($config_info));
+    $module->emLog("Display $id");
+    //$module->emLog("Display $id: config info: " . json_encode($config_info));
     switch ($config_info["type"]) {
         case "repeatingForm":
 
@@ -372,7 +391,8 @@ function retrieveDataUsingFile($config_info, $record_id) {
     // There is a restriction that the function called must be the same name as the file
     $filename = $config_info["file"];
     $functionname = explode(".", $filename)[0];
-    $file_location = $module->getModulePath() . "datasource/p" . $pid . "/" . $filename;
+    //$file_location = $module->getModulePath() . "datasource/p" . $pid . "/" . $filename;
+    $file_location = $module->getModulePath() . "datasource/p14435/" . $filename;
     if (file_exists($file_location)) {
 
         // Include the file. The file must include a function of the same name. Then call the function to retrieve headers and data.
