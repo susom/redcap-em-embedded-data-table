@@ -41,9 +41,8 @@ if (empty($displays)) {
 }
 
 function getTitle() {
-    global $module, $title, $pid, $record_id;
+    global $module, $title, $pid;
 
-    $module->emLog("Input title: " . $title);
     $data_dictionary = new Project($pid);
 
     // Each field name will be enclosed in [] so loop until there are no more [
@@ -212,8 +211,15 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
             $config_info["event"], null, null, null, null, $filter);
     }
 
+    // See if we are retrieving data from an event
+    if (is_numeric($config_info["event"])) {
+        $eventList = $config_info["event"];
+    } else {
+        $eventList = null;
+    }
+
     // Instantiate the class to retrieve repeating form data
-    $repeating_form = new RepeatingFormsExt($config_info["project_id"], $config_info["form"]);
+    $repeating_form = new RepeatingFormsExt($config_info["project_id"], $config_info["form"], $eventList);
 
     // For the display add a link to the record so the user can go directly there from the display
     $displayData = array();
@@ -390,21 +396,32 @@ function retrieveDataUsingFile($config_info, $record_id) {
 
     // There is a restriction that the function called must be the same name as the file
     $filename = $config_info["file"];
-    $functionname = explode(".", $filename)[0];
-    //$file_location = $module->getModulePath() . "datasource/p" . $pid . "/" . $filename;
-    $file_location = $module->getModulePath() . "datasource/p14435/" . $filename;
+    //$functionname = explode(".", $filename)[0];
+    $classname = "Stanford\\EDT\\" . explode(".", $filename)[0];
+    $system_location = $module->getSystemSettings();
+    $file_location =  $system_location["datasource_location"]["value"] . "/" . $filename;
+
     if (file_exists($file_location)) {
 
         // Include the file. The file must include a function of the same name. Then call the function to retrieve headers and data.
         require_once($file_location);
-        $return_data = $functionname($pid, $record_id);
+
+        $newClass = new $classname($pid, $record_id);
+        $title = $newClass->getTitle();
+        $header = $newClass->getHeader();
+        $data = $newClass->getData();
 
     } else {
         $module->emLog("File $filename.php is not found in directory $file_location");
         $header = array("File $filename.php is not found in the correct directory. Please make sure the file exists.");
     }
 
-    return $return_data;
+    $returnData = array();
+    $returnData["title"] = $title;
+    $returnData["header"] = $header;
+    $returnData["data"] = $data;
+
+    return $returnData;
 }
 
 function extractHeaders($fields) {
@@ -453,33 +470,6 @@ function extractHeaders($fields) {
         <div class="container">
 
             <?php echo getAllDisplays(); ?>
-            <!--
-            <div class="accordion" id="accordionDisplays">
-
-                < ?php list($configNames, $config_info) = getConfigs();
-                    foreach($configNames as $config) {
-                        $config_id = strtolower(str_replace(' ', '_', $config));
-                ?>
-
-                <div>
-                    <button class="clickable"  data-target="< ?php echo $config_id; ?>" data-parent="#accordionDisplays" onclick="toggleButton('< ?php echo $config_id; ?>')">
-                        < ?php echo $config; ?>
-                    </button>
-                    <div class="collapse" id="< ?php echo $config_id; ?>_collapse" style="display:none;">
-                        <div id="space">
-                        </div>
-                        < ?php echo getDisplay($config); ?>
-                    </div>
-                </div>
-
-                <div></div>
-
-                < ?php
-                    }
-                ?>
-
-            </div>
-            -->
 
         </div>  <!-- END CONTAINER -->
     </body>
@@ -505,7 +495,6 @@ $(document).ready(function() {
         tableElement.DataTable({
             "lengthMenu": [ [-1, 10, 25, 50], ["All",10, 25, 50] ],
             dom: 'Bftlp',
-            "order": [[1, "asc"]],
             buttons: {
                 name: 'primary',
                 buttons: ['copy', 'excel', 'pdf',

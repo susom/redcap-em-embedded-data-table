@@ -81,7 +81,6 @@ if ($action == 'get_projects') {
     $table_name = isset($_POST['table_name']) && !empty($_POST['table_name']) ? $_POST['table_name'] : null;
     $file = isset($_POST['file']) && !empty($_POST['file']) ? $_POST['file'] : null;
     $title = isset($_POST['title']) && !empty($_POST['title']) ? $_POST['title'] : null;
-    $module->emLog("Table name: " . $table_name);
 
     if (empty($selectedProj) || $selectedProj->project_id !== $selected_project) {
         $selectedProj = getProjDataDictionary($selected_project);
@@ -134,7 +133,6 @@ if ($action == 'get_projects') {
 
         // Add or Replace the existing config with this new one
         $config_info["$table_name"] = $save_data;
-        $module->emLog("List to save: " . json_encode($config_info));
 
         setConfigs($config_names, $config_info);
     }
@@ -238,7 +236,8 @@ function getProjects($selected_project = null) {
     // Add an option to select an algorithm file which will fetch the data for display
     // We are putting the algorithm files in their own directory based on pid because we don't want just anyone to have access
     // to this data.  Users can only select custom scripts that are in their directory '/embedded_data_tables_v9.9.9/algorithms/pidxxxx'.
-    $filelist = scandir($module->getModulePath() . "datasource/p" . $pid);
+    $file_location = $module->getSystemSettings();
+    $filelist = scandir($file_location["datasource_location"]["value"]);
     if (!empty($filelist)) {
         $datalist .= "<option value='---  Custom Script  ---'></option>";
         foreach ($filelist as $filekey => $filename) {
@@ -246,7 +245,7 @@ function getProjects($selected_project = null) {
             if (substr($filename, 0, 1) != '.') {
                 $datalist .= "<option value='$filename'></option>";
                 if ($this_proj_id == $filename) {
-                    $input =  "<input class='form-control' id='selected_proj' name='selected_proj' list='proj' value ='" . $filename . "' onclick='getSelectedProject()' onchange='getSelectedProject()'>";
+                    $input = "<input class='form-control' id='selected_proj' name='selected_proj' list='proj' value ='" . $filename . "' onclick='getSelectedProject()' onchange='getSelectedProject()'>";
                 }
             }
         }
@@ -576,17 +575,17 @@ function getAvailableFields($selectedProj, $event, $form) {
                                 <ul id="fields_selected" class="col-sm-6">
                                 </ul>
                             </div>
-                        </div>
 
-                        <div class="row" id="buttons_id">
-                            <div id="space">
-                            </div>
                             <label class="col-form-label"><b>Enter a display title (optional):</b></label>
                             <div>
                                 <input id="title">
                             </div>
+
                             <div id="space">
                             </div>
+                        </div>
+
+                        <div class="row" id="buttons_id">
                             <div>
                                 <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
                                 <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>

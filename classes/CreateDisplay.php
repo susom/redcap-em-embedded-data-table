@@ -19,7 +19,7 @@ class CreateDisplay {
         //Render table
         $grid .= '<div>';
 
-        $grid .= '<table class="table table-striped table-bordered dataTable" id="' . $id . '">';
+        $grid .= '<table class="table cell-border" id="' . $id . '">';
         if (!empty($title)) {
             $grid .= "<caption>" . $title . "</caption>";
         }
@@ -39,7 +39,7 @@ class CreateDisplay {
         // Render table without the row stripping and bordering
         $grid .= '<div>';
 
-        $grid .= '<table class="table dataTable" id="' . $id . '">';
+        $grid .= '<table class="table" id="' . $id . '">';
         if (!empty($title)) {
             $grid .= "<caption>" . $title . "</caption>";
         }
@@ -58,7 +58,7 @@ class CreateDisplay {
 
         foreach ($header as $col_key => $this_col) {
             $row .= '<th class="th-sm" scope="col">' . $this_col;
-            $row .= '<i class="fa fa-sort float-right" aria-hidden="true"></i>';
+            $row .= '<i class="fa float-right" aria-hidden="true"></i>';
             $row .= '</th>';
         }
 

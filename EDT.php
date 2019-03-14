@@ -3,6 +3,7 @@ namespace Stanford\EDT;
 /** @var \Stanford\EDT\EDT $module */
 
 use \ExternalModules;
+include_once ("classes/CustomTableInterface.php");
 
 class EDT extends \ExternalModules\AbstractExternalModule
 {

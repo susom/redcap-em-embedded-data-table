@@ -47,6 +47,12 @@
   },
 
   "system-settings": [
+    {
+      "key": "datasource_location",
+      "name": "<b>Full server path to the files used as datasources for the EDT project</b>",
+      "required": true,
+      "type": "text"
+    }
   ],
 
   "project-settings": [
