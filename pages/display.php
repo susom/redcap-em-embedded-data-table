@@ -465,9 +465,10 @@ function extractHeaders($fields) {
 
     </head>
     <body>
-        <h3 style="text-align: center"><?php echo getTitle(); ?></h3>
-
         <div class="container">
+            <button id="print_button" class="btn btn-primary pull-right hidden-print" onclick="window.print();"><span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print</button>
+            <br>
+            <h3 style="text-align: center"><?php echo getTitle(); ?></h3>
 
             <?php echo getAllDisplays(); ?>
 
