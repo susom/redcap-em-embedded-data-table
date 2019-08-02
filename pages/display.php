@@ -258,7 +258,7 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
 
 function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
 
-    global $module;
+    global $module, $Proj;
 
     // Retrieve data for the display
     if (empty($config_info['key_field'])) {
@@ -304,8 +304,11 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
 
                         foreach ($eventData as $instanceId => $instanceInfo) {
 
+                            $first_form = $Proj->eventsForms[$repeatEventId][0];
+
                             // Add a link to the record/instance
-                            $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/record_home.php?pid=" . trim($config_info["project_id"]) .
+                            $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) .
+                                "&page=" . $first_form .
                                 "&event_id=" . $repeatEventId . "&id=" . $record .  "&instance=" . $instanceId ."'>" . $record . "-" . $instanceId . "</a>";
                             $fieldArray[$selectedProj->table_pk] = $record_link;
 
