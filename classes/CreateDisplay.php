@@ -9,6 +9,7 @@ namespace Stanford\EDT;
 /** @var \Stanford\EDT\EDT $module */
 
 use \REDCap;
+use \Plugin;
 
 class CreateDisplay {
 
@@ -39,7 +40,7 @@ class CreateDisplay {
         // Render table without the row stripping and bordering
         $grid .= '<div>';
 
-        $grid .= '<table class="table" id="' . $id . '">';
+        $grid .= '<table class="display" id="' . $id . '">';
         if (!empty($title)) {
             $grid .= "<caption>" . $title . "</caption>";
         }
@@ -55,9 +56,19 @@ class CreateDisplay {
     private function renderHeaderRow($header)
     {
         $row = '<thead><tr>';
+        $num_cols = count($header);
+
+        // This is a rough estimate to get the whole table to fit within the boundaries of the page. This is mainly to support
+        // the Allergic Reactions table that is too large for a page with 12 pt font size.
+        if ($num_cols > 12) {
+            $font_size = 7;
+        } else {
+            $font_size = 12;
+        }
 
         foreach ($header as $col_key => $this_col) {
-            $row .= '<th class="th-sm" scope="col">' . $this_col;
+            //$row .= '<th class="th-sm" scope="col">' . $this_col;
+            $row .= '<th scope="col" style="font-size:' . $font_size . 'px !important">' . $this_col;
             $row .= '<i class="fa float-right" aria-hidden="true"></i>';
             $row .= '</th>';
         }

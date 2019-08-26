@@ -1,10 +1,10 @@
 
 .container {
     height: 100%;
-    width: 100%;
-    font-size: small;
-    overflow-x: scroll;
-    box-sizing: content-box;
+    font-size: 12px;
+    overflow-y: scroll;
+    box-sizing: border-box;
+    width: 95% !important;
 }
 
 
@@ -61,12 +61,10 @@ p {
     height: 40px;
 }
 
-table {
-    width: 100% !important;
+.table {
     margin-bottom: 15px !important;
     border-spacing: 2px;
 }
-
 
 input {
     width: 100% !important;
