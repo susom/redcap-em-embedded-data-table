@@ -472,6 +472,37 @@ function extractHeaders($fields) {
             <button id="print_button" class="btn btn-primary pull-right hidden-print" onclick="window.print();"><span class="glyphicon glyphicon-print" aria-hidden="true"></span> Print</button>
             <br>
             <h3 style="text-align: center"><?php echo getTitle(); ?></h3>
+            <br>
+
+<!--      Add filter  -->
+            <table class="display compact" style="width:100%; margin-bottom: 30px; font-size: small;">
+                <table-caption>
+                    <h6 align="center">Filter the Missed/Partial Doses, Allergic Reactions and Health Changes table by dates</h6>
+                </table-caption>
+                <body>
+                <tr>
+                    <td class="col" style="width:27%">
+                    </td>
+                    <td class="col" style="width:15%">
+                        <label for="start"><b>Start Date</b></label>
+                        <input id="start_date" type="date">
+                    </td>
+                    <td class="col" style="width:15%">
+                        <label for="end"><b>End Date</b></label>
+                        <input id="end_date" type="date" size="10">
+                    </td>
+                    <td class="col" style="margin-right: 1px; width: 6%; vertical-align: bottom">
+                    <button class="btn-sm btn-secondary" id="filter">Filter</button>
+                    </td>
+                    <td class="col" style="width:20%; vertical-align: bottom">
+                        <button class="btn-sm btn-secondary" id="clearFilter">Clear Filter</button>
+                    </td>
+                    <td class="col" style="width:27%; vertical-align: bottom">
+                    </td>
+                </tr>
+                </body>
+            </table>
+<!--      end Filter    -->
 
             <?php echo getAllDisplays(); ?>
 
@@ -500,30 +531,81 @@ $(document).ready(function() {
             "lengthMenu": [ [-1, 10, 25, 50], ["All",10, 25, 50] ],
             //dom: 'Bftlp',
             dom: 'ftlp'
-            /*
-            buttons: {
-                name: 'primary',
-                buttons: ['copy', 'excel', 'pdf',
-                    {
-                        extend: 'print',
-                        customize: function (win) {
-                            $(win.document.body)
-                                .css('font-size', '12pt');
-                            $(win.document.body).find('table')
-                                .addClass('compact')
-                                .css('font-size', 'inherit');
-                        }
-                    }
-                ]
-            }
-             */
         });
-
-        $(".dt-buttons").css("left", 30);
-        $(".dt-buttons").addClass('hidden-print');
-        $(".dataTables_filter").addClass('hidden-print');
-        $(".dataTables_length").addClass('hidden-print');
     }
 });
+
+$('#filter').on('click', function(e){
+    e.preventDefault();
+    var startDate = $('#start_date').val(),
+        endDate = $('#end_date').val();
+
+    var missedDoses = $('#missed_or_partial_doses');
+    filterByDate(startDate, endDate); // We call our filter function
+    missedDoses.dataTable().fnDraw(); // Manually redraw the table after filtering
+
+    var allergicReactions = $('#allergic_reactions');
+    filterByDate(startDate, endDate); // We call our filter function
+    allergicReactions.dataTable().fnDraw(); // Manually redraw the table after filtering
+
+    var healthChanges = $('#health_changes');
+    filterByDate(startDate, endDate); // We call our filter function
+    healthChanges.dataTable().fnDraw(); // Manually redraw the table after filtering
+
+});
+
+// Clear the filter. Unlike normal filters in Datatables,
+// custom filters need to be removed from the afnFiltering array.
+$('#clearFilter').on('click', function(e){
+    $('#start_date').val("");
+    $('#end_date').val("");
+    $.fn.dataTableExt.afnFiltering.length = 0;
+    $('#missed_or_partial_doses').dataTable().fnDraw();
+    $('#allergic_reactions').dataTable().fnDraw();
+    $('#health_changes').dataTable().fnDraw();
+});
+
+/* Our main filter function
+ * We pass the column location, the start date, and the end date
+ */
+var filterByDate = function(startDate, endDate) {
+    // Custom filter syntax requires pushing the new filter to the global filter array
+    $.fn.dataTableExt.afnFiltering.push(
+        function( oSettings, aData, iDataIndex ) {
+
+            if (oSettings.nTable.id === "missed_or_partial_doses") {
+                column = 2;
+            } else if (oSettings.nTable.id === "allergic_reactions") {
+                column = 3;
+            } else if (oSettings.nTable.id === "health_changes") {
+                column = 2;
+            }
+
+            //console.log("In filterByDate: table name: " + oSettings.nTable.id);
+            var rowDate = normalizeDate(aData[column]),
+                start = normalizeDate(startDate),
+                end = normalizeDate(endDate);
+            //console.log("RowDate: " + rowDate + ", start: " + start + ", end: " + end + ", non-normalized: " + aData[column] + ", column: " + column);
+
+            // If our date from the row is between the start and end
+            if (start <= rowDate && rowDate <= end) {
+                return true;
+            } else if (rowDate >= start && end === '' && start !== ''){
+                return true;
+            } else if (rowDate <= end && start === '' && end !== ''){
+                return true;
+            } else {
+                return false;
+            }
+        }
+    );
+};
+
+// converts date strings to a Date object, then normalized into a YYYYMMMDD format (ex: 20131220). Makes comparing dates easier. ex: 20131220 > 20121220
+var normalizeDate = function(dateString) {
+    var date = new Date(dateString);
+    var normalized = date.getFullYear() + '' + (("0" + (date.getMonth() + 1)).slice(-2)) + '' + ("0" + date.getDate()).slice(-2);
+    return normalized;
+}
 
 </script>

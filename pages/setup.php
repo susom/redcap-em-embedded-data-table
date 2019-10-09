@@ -234,8 +234,8 @@ function getProjects($selected_project = null) {
     }
 
     // Add an option to select an algorithm file which will fetch the data for display
-    // We are putting the algorithm files in their own directory based on pid because we don't want just anyone to have access
-    // to this data.  Users can only select custom scripts that are in their directory '/embedded_data_tables_v9.9.9/algorithms/pidxxxx'.
+    // We are putting the algorithm files in the plugins directory at ../plugins/edt_datasource/
+    // Since this feature is specific to SNP, we are not worried about allowing them access to the scripts.
     $file_location = $module->getSystemSettings();
     $filelist = scandir($file_location["datasource_location"]["value"]);
     if (!empty($filelist)) {

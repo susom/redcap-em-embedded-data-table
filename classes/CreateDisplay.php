@@ -64,8 +64,7 @@ class CreateDisplay {
         }
 
         foreach ($header as $col_key => $this_col) {
-            //$row .= '<th class="th-sm" scope="col">' . $this_col;
-            $row .= '<th scope="col" style="font-size:' . $font_size . 'px !important; margin: 0px, 0px">' . $this_col;
+            $row .= '<th scope="col" style="color: black; background: lightgrey; font-size:' . $font_size . 'px !important;"><b>' . $this_col . '</b>';
             $row .= '<i class="fa float-right" aria-hidden="true"></i>';
             $row .= '</th>';
         }
