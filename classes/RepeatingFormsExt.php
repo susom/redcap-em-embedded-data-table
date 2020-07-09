@@ -37,7 +37,7 @@ class RepeatingFormsExt extends \Stanford\Utilities\RepeatingForms {
         $id = array();
 
         // See if the event id is included
-        if (empty($instances[$record_id][$event_id])) {
+        if (!empty($instances[$record_id])) {
             foreach ($instances[$record_id] as $key => $value) {
                 $id["instance"] = $key;
 
