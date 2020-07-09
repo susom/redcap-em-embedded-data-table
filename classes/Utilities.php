@@ -101,13 +101,16 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
 
     global $module;
 
-    // First do a query to see which record(s) in the data project fit our filter
+    // First do a query to see which record in the data project fit our filter
+    // Since the record ID may not be in the same event as the data we are retrieving, don't use the event_id.
+    // The record ID will be the key to returned data not matter if it is a classical or longitudinal project.
     if (empty($config_info['key_field'])) {
-        $recordList = array($record_id => $record_id);
+        $recordNum = $record_id;
     } else {
         $filter = "[" . $config_info['key_field'] . "] = '$record_id'";
         $recordList = REDCap::getData($config_info["project_id"], 'array', null, array_keys($config_info["fields"]),
-            $config_info["event"], null, null, null, null, $filter);
+            null, null, null, null, null, $filter);
+        $recordNum = array_keys($recordList)[0];
     }
 
     // See if we are retrieving data from an event
@@ -120,28 +123,26 @@ function retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id)
     // Instantiate the class to retrieve repeating form data
     $repeating_form = new RepeatingFormsExt($config_info["project_id"], $config_info["form"], $eventList);
 
-    // For the display add a link to the record so the user can go directly there from the display
+    // Retrieve the data
     $displayData = array();
-    foreach($recordList as $recordNum => $recordData) {
+    $data = $repeating_form->getAllInstancesFlat($recordNum, array_keys($config_info["fields"]), $config_info['event']);
 
-        // Retrieve the data
-        $data = $repeating_form->getAllInstancesFlat($recordNum, array_keys($config_info["fields"]), $config_info['event']);
-        foreach ($data as $one_row => $record_info) {
+    // Retrieve the data and format it for the display
+    foreach ($data as $one_row => $record_info) {
 
-            // For each row, add the record/instance of this data first
-            $one_record = array();
-            $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
-            $one_record[$selectedProj->table_pk] = $record_link;
+        // For each row, add the record/instance of this data first with a link
+        $one_record = array();
+        $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) . "&page=" . $config_info['form'] . "&id=" . $recordNum . "&event_id=" . $config_info["event"] . "&instance=" . $record_info['instance'] . "'>$recordNum-" . $record_info['instance'] . "</a>";
+        $one_record[$selectedProj->table_pk] = $record_link;
 
-            foreach($config_info["fields"] as $key => $value) {
-                // If the record primary key is in the list, don't add it because we are already adding it above as the first field
-                if ($key != $selectedProj->table_pk) {
-                    $one_record[$key] = getLabel($selectedProj, $key, $record_info[$key]);
-                }
+        foreach($config_info["fields"] as $key => $value) {
+            // If the record primary key is in the list, don't add it because we are already adding it above as the first field
+            if ($key != $selectedProj->table_pk) {
+                $one_record[$key] = getLabel($selectedProj, $key, $record_info[$key]);
             }
-
-            $displayData[] = $one_record;
         }
+
+        $displayData[] = $one_record;
     }
 
     // Add the record/instance column to the header and take out the primary key if it was added  separately

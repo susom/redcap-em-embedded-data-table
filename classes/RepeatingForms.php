@@ -532,6 +532,16 @@ class RepeatingForms
     }
 
     /**
+     * Returns whether or not this project is longitudinal or not
+     *
+     * @return boolean
+     */
+    public function isProjectLongitudinal()
+    {
+        return $this->is_longitudinal;
+    }
+
+    /**
      * This function will look for the data supplied in the given record/event and send back the instance
      * number if found.  The data supplied does not need to be all the data in the instance, just the data that
      * you want to search on.

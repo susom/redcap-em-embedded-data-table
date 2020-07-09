@@ -35,9 +35,11 @@ class RepeatingFormsExt extends \Stanford\Utilities\RepeatingForms {
         $flat_results = array();
         $display_results = array();
         $id = array();
+        $is_longitudinal = $this->isProjectLongitudinal();
 
-        // See if the event id is included
-        if (!empty($instances[$record_id])) {
+        // See if the event id is included in the returned data
+        if ($is_longitudinal && !is_null($event_id)) {
+
             foreach ($instances[$record_id][$event_id] as $key => $value) {
                 $id["instance"] = $key;
 
@@ -50,8 +52,9 @@ class RepeatingFormsExt extends \Stanford\Utilities\RepeatingForms {
                 $flat_results[] = array_merge($id, $display_results);
             }
 
-        } else if (!empty($event_id)) {
-            foreach ($instances[$record_id][$event_id] as $key => $value) {
+        } else if (!$is_longitudinal) {
+
+            foreach ($instances[$record_id] as $key => $value) {
                 $id["instance"] = $key;
 
                 // If there are no display fields specified, return them all.
@@ -62,6 +65,7 @@ class RepeatingFormsExt extends \Stanford\Utilities\RepeatingForms {
                 }
                 $flat_results[] = array_merge($id, $display_results);
             }
+
         } else {
             $flat_results = null;
         }
