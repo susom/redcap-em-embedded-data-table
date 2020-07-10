@@ -45,11 +45,13 @@ if ($action == 'get_projects') {
     $key_form = isset($_POST['key_form']) && !empty($_POST['key_form']) ? $_POST['key_form'] : null;
     $key_field = isset($_POST['key_field']) && !empty($_POST['key_field']) ? $_POST['key_field'] : null;
 
+    $module->emDebug("In get keys: key form: " . $key_form . "key_event: $key_event");
     if (empty($selectedProj) || $selectedProj->project_id !== $selected_project) {
         $selectedProj = getProjDataDictionary($selected_project);
     }
 
     $keys = getAvailableKeysInDataProject($selectedProj, $arm, $event, $key_event, $key_form, $key_field);
+    $module->emDebug("In get_keys: available keys: " . json_encode($keys));
 
     print $keys;
     return;
@@ -367,7 +369,8 @@ function getDisplayTypeList($selectedProj, $armId) {
 
     // If this project is not the same as the data project, add the option to use the key (i.e. diary project)
     if ($selectedProj->project_id != $pid) {
-        $key = "<option value='Common key project' data-arm='$selectedArmId' data-event='*' data-form='$formName' data-type='primary_key'></option>";
+        $first_form = $selectedProj->firstForm;
+        $key = "<option value='Common key project' data-arm='$selectedArmId' data-event='*' data-form='$first_form' data-type='primary_key'></option>";
     }
 
 
@@ -412,7 +415,7 @@ function getAvailableKeysInDataProject($selectedProj, $arm, $event, $key_event=n
 
     list($eventsList, $selectedArm, $selectedArmId) = retrieveEventListForArm($selectedProj, $arm);
 
-    // If the data is coming from a different project than, the user must select a foreign key in the data project which
+    // If the data is coming from a different project, the user must select a foreign key in the data project which
     // corresponds to the record_id in our current project
     if ($selectedProj->project_id == $pid) {
         return null;
@@ -465,6 +468,7 @@ function getAvailableFields($selectedProj, $event, $form) {
     global $module;
     $html = "";
 
+    $module->emDebug("In getAvailableFields: selected Project $selectedProj, event $event, form $form");
     // If form is empty and event is not, we need to get all fields in that repeating event
     if (empty($form) and !empty($event)) {
 
