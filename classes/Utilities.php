@@ -171,6 +171,7 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
         $data = REDCap::getData($config_info["project_id"], 'array', null, array_keys($config_info["fields"]), null,
             null, null, null, null, $filter);
         $records = array_keys($data);
+        $module->emDebug("Record in other project: " . json_encode($records));
     }
 
     // Figure out the arm number
@@ -188,11 +189,13 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
         $eventList = null;
     }
 
+    $module->emDebug("Event list: " . json_encode($eventList));
     // Now that we have the list of records we want to retrieve, get the fields
     if (empty($records)) {
         $displayData = array();
     } else {
         $data = REDCap::getData($config_info["project_id"], 'array', $records, array_keys($config_info["fields"]), $eventList);
+        $module->emDebug("Data: " . json_encode($data));
 
         // Only display rows which have a value.  If the linking key is in a different event than the other data, there will be
         // records for events which have data even though these fields do not belong to them.
@@ -234,9 +237,12 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
 
                 } else {
 
+                    // Find the event name from the event ID
+                    $eventName = $selectedProj->eventInfo[$eventId]["name"];
+
                     // Add a link to the record in the data project
                     $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) .
-                        "&page=" . $config_info["form"] . "&event_id=" . $eventId . "&id=" . $record . "'>" . $record . "</a>";
+                        "&page=" . $config_info["form"] . "&event_id=" . $eventId . "&id=" . $record . "'>" . $record . " [Event: " . $eventName . "]</a>";
                     $fieldArray[$selectedProj->table_pk] = $record_link;
 
                     foreach ($config_info["fields"] as $fieldname => $fieldlabel) {
@@ -358,7 +364,7 @@ function extractHeaders($fields) {
 function getOneDisplay($id, $config_info)
 {
     global $module, $record_id;
-    $module->emDebug("In getOneDisplay with config info: " . json_encode($config_info));
+    $module->emDebug("In getOneDisplay for display $id with config info: " . json_encode($config_info));
 
     // Retrieve the data dictionary in case we need to convert labels and field names
     if (!empty($config_info["project_id"])) {
@@ -369,45 +375,48 @@ function getOneDisplay($id, $config_info)
     }
 
     // If this display type is a repeating form, use the repeating form utilities to create the table
-    $module->emDebug("Display $id: config info: " . json_encode($config_info));
     switch ($config_info["type"]) {
         case "repeatingForm":
 
+            $module->emDebug("In repeating form for data table $id");
             // Retrieve data and generate display
             $return_data = retrieveDataFromRepeatingForms($selectedProj, $config_info, $record_id);
             $header = $return_data["header"];
             $data = $return_data["data"];
             $display = new CreateDisplay();
             $html = $display->renderTable($id, $header, $data, $config_info["title"]);
+            $module->emDebug("Finished display for $id");
 
             break;
         case "events":
         case "repeatingEvents":
 
+            $module->emDebug("In repeating events for data table $id");
             // Retrieve data and generate display
             $return_data = retrieveDataAcrossEvents($selectedProj, $config_info, $record_id);
             $header = $return_data["header"];
             $data = $return_data["data"];
             $display = new CreateDisplay();
             $html = $display->renderTable($id, $header, $data, $config_info["title"]);
+            $module->emDebug("Finished display for $id");
 
             break;
 
         case "primary_key":
 
-            $module->emDebug("Selected Proj $selectedProj, Record ID $record_id, Config Info: " . json_encode($config_info));
+            $module->emDebug("In primary key for data table $id");
             // Retrieve data and generate display
             $return_data = retrieveDataUsingPrimaryKey($selectedProj, $config_info, $record_id);
             $header = $return_data["header"];
             $data = $return_data["data"];
             $display = new CreateDisplay();
-            $module->emDebug("Header $header, Data: " . json_encode($data));
             $html = $display->renderTable($id, $header, $data, $config_info["title"]);
-            $module->emDebug("HTML: " . $html);
+            $module->emDebug("Finished display for $id");
 
             break;
         case "file":
 
+            $module->emDebug("In file for data table $id");
             // Retrieve data and generate display
             $return_data = retrieveDataUsingFile($config_info, $record_id);
             $header = $return_data["header"];
@@ -415,6 +424,7 @@ function getOneDisplay($id, $config_info)
             $title = $return_data["title"];
             $display = new CreateDisplay();
             $html = $display->renderTable($id, $header, $data, $title);
+            $module->emDebug("Finished display for $id");
 
             break;
 
