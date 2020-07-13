@@ -168,8 +168,10 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
     } else {
         // First find the records that meet our criteria
         $filter = "[" . $config_info['key_field'] . "] = '$record_id'";
+        $module->emDebug("Filter:  $filter");
         $data = REDCap::getData($config_info["project_id"], 'array', null, array_keys($config_info["fields"]), null,
             null, null, null, null, $filter);
+        $module->emDebug("Looking for record in project " . $config_info["project_id"] . " = record = " . json_encode($data));
         $records = array_keys($data);
         $module->emDebug("Record in other project: " . json_encode($records));
     }
@@ -195,13 +197,14 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
         $displayData = array();
     } else {
         $data = REDCap::getData($config_info["project_id"], 'array', $records, array_keys($config_info["fields"]), $eventList);
-        $module->emDebug("Data: " . json_encode($data));
+        $module->emDebug("Retrieved Display Data: " . json_encode($data));
 
         // Only display rows which have a value.  If the linking key is in a different event than the other data, there will be
         // records for events which have data even though these fields do not belong to them.
         $displayData = array();
         foreach ($data as $record => $recordInfo) {
             foreach ($recordInfo as $eventId => $eventInfo) {
+                $module->emDebug("Event data: " . json_encode($eventInfo));
                 $fieldNotNullCount = 0;
                 $fieldArray = array();
 
@@ -239,6 +242,7 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
 
                     // Find the event name from the event ID
                     $eventName = $selectedProj->eventInfo[$eventId]["name"];
+                    $module->emDebug("Event Name: " . $eventName);
 
                     // Add a link to the record in the data project
                     $record_link = "<a class='text-primary' href='" . APP_PATH_WEBROOT . "DataEntry/index.php?pid=" . trim($config_info["project_id"]) .
@@ -260,6 +264,7 @@ function retrieveDataAcrossEvents($selectedProj, $config_info, $record_id) {
             }
         }
     }
+    $module->emDebug("Display data: " . json_encode($displayData));
 
     // Add the event to the header so the user knows where the data is from and create display
     $fields = $config_info["fields"];
