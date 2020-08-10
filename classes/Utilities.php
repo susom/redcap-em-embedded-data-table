@@ -9,17 +9,20 @@ namespace Stanford\EDT;
  */
 use \Project;
 use \Exception;
-use \Redcap;
+use \REDCap;
 
 function getProjDataDictionary($selected_pid) {
     global $module;
 
+    $module->emDebug("in getProjDataDictionary for project $selected_pid");
     $selectedProj = null;
     if (!empty($selected_pid)) {
         try {
+            $module->emDebug("About to retrieve data dictionary");
             $selectedProj = new Project($selected_pid, true);
             if ($selectedProj->project_id == $selected_pid) {
                 $selectedProj->setRepeatingFormsEvents();
+                $module->emDebug("Retrieved data dictionary pid=$selected_pid");
             } else {
                 $module->emError("Error retrieving project data dictionary for project $selected_pid");
                 $selectedProj = null;
@@ -373,12 +376,14 @@ function getOneDisplay($id, $config_info)
 
     // Retrieve the data dictionary in case we need to convert labels and field names
     if (!empty($config_info["project_id"])) {
+        $module->emDebug("Retrieving project data dictionary for: " . $config_info["project_id"]);
         $selectedProj = getProjDataDictionary($config_info["project_id"]);
         if (empty($selectedProj)) {
             $module->emError("Cannot retrieve project data dictionary for displays for pid " . $config_info["project_id"]);
         }
     }
 
+    $module->emDebug("Select the current processing based on config type: " . $config_info["type"]);
     // If this display type is a repeating form, use the repeating form utilities to create the table
     switch ($config_info["type"]) {
         case "repeatingForm":
