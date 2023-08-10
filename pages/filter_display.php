@@ -10,17 +10,11 @@ require_once ($module->getModulePath() . "classes/CreateDisplay.php");
 require_once ($module->getModulePath() . "classes/RepeatingFormsExt.php");
 require_once ($module->getModulePath() . "classes/Utilities.php");
 
-// This needs to be after the api checks otherwise it gets added to the return data
-require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
-
-$pid = isset($_GET['pid']) && !empty($_GET['pid']) ? $_GET['pid'] : null;
 $record_id = isset($_GET['record']) && !empty($_GET['record']) ? $_GET['record'] : null;
 $displays = isset($_GET['displays']) && !empty($_GET['displays']) ? $_GET['displays'] : null;
 $title = isset($_GET['title']) && !empty($_GET['title']) ? $_GET['title'] : null;
-
-//DEFINE(PROJECT_PID, $pid);
-$module->projectId = $pid;
-$user = USERID;
+$pid = $module->getProjectId();
+$module->emDebug("In display: pid $pid, record_id $record_id, displays $displays");
 
 if (empty($pid)) {
     echo "<h6>The displays are associated with a project.  Please enter a project and try again!</h6>";
