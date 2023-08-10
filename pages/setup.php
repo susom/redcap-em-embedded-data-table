@@ -7,7 +7,8 @@ use \REDCap;
 require_once($module->getModulePath() . "classes/Utilities.php");
 
 $pid = isset($_GET['pid']) && !empty($_GET['pid']) ? $_GET['pid'] : null;
-DEFINE(PROJECT_PID, $pid);
+$module->projectId = $pid;
+//DEFINE(PROJECT_PID, $pid);
 $user = USERID;
 
 if (!empty($pid)) {
@@ -15,7 +16,7 @@ if (!empty($pid)) {
 }
 
 $action = isset($_POST['action']) && !empty($_POST['action']) ? $_POST['action'] : null;
-$module->emLog("This is the post action: " . $action);
+$module->emLog("This is the post action: " . $action . ", with pid: " . $pid);
 
 if ($action == 'get_projects') {
     $project_id = isset($_POST['project_id']) && !empty($_POST['project_id']) ? $_POST['project_id'] : null;
@@ -168,6 +169,7 @@ if ($action == 'get_projects') {
     if (!empty($table_name)) {
 
         list($config_names, $config_info)  = getConfigs();
+        if (empty($config_names)) $config_names = [];
 
         // Check to make sure this name exists
         $index = array_search($table_name, $config_names);
@@ -183,8 +185,10 @@ if ($action == 'get_projects') {
     return;
 }
 
+$module->emDebug("End of processing");
 // This needs to be after the api checks otherwise it gets added to the return data
-require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
+//require APP_PATH_DOCROOT . "ProjectGeneral/header.php";
+
 
 function getSavedConfigs() {
     global $module;
@@ -192,7 +196,7 @@ function getSavedConfigs() {
     list($config_names, $config_info)  = getConfigs();
 
     $html = '<input class="form-control" name="edt_name" id="edt_name" list="config_name" onchange="getSelectedConfig()">';
-    if (count($config_names) > 0) {
+    if (!empty($config_names) && count($config_names) > 0) {
         $html .=  "<datalist id='config_name'>";
         foreach ($config_names as $setup => $setupInfo) {
             $html .= "<option value='" . $setupInfo . "'></option>";
@@ -491,126 +495,6 @@ function getAvailableFields($selectedProj, $event, $form) {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <!-- Required meta tags -->
-        <title>Embedded Data Table Setup</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=yes">
-
-        <link rel="stylesheet" type="text/css" href="<?php echo $module->getUrl("pages/EDT.css") ?>" />
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
-
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
-    </head>
-    <body>
-
-        <h3>Embedded Data Table Setup</h3>
-        <div>
-            This is the Setup Page to create Embedded Data Tables for your project.  Please select the data table
-            that you would like to modify or create a new data table
-        </div>
-        <br>
-
-        <div class="container">
-
-            <div class="accordion" id="accordionDisplays">
-                <div>
-                    <button class="clickable"  data-target="setup" data-parent="#accordionDisplays" onclick="toggleButton('setup')">
-                        Create, modify or delete a configuration
-                    </button>
-                    <div class="collapse" id="setup_collapse" style="display:none;">
-
-                        <div class="row" id="config_id" style="display: inline;" >
-                            <div>
-                                <label class="col-form-label"><b>Embedded Table Name - select an existing setup or create a new one</b></label>
-                            </div>
-                            <div>
-                                <?php echo getSavedConfigs(); ?>
-                                <p id="edt_name_check"></p>
-                            </div>
-                        </div>
-
-                        <div class="row" id="projects_id">
-                            <div>
-                                <label class="col-form-label"><b>Select the project where the data resides:</b></label>
-                            </div>
-                            <div id="project_list_id">
-                            </div>
-                        </div>
-
-                        <div class="row" id="arm_id">
-                            <div>
-                                <label class="col-form-label"><b>There is more than one arm in this project, please select the arm you want to use:</b></label>
-                            </div>
-                            <div id="arm_list_id">
-                                <p id="arms_noselection_check"></p>
-                            </div>
-                       </div>
-
-                        <div class="row" id="form_id">
-                            <div>
-                                <label class="col-form-label"><b>Select the type of data you want to use:</b></label>
-                            </div>
-                            <div id="form_list_id">
-                            </div>
-                        </div>
-
-                        <div class="row" id="key_id">
-                            <div>
-                                <label class="col-form-label"><b>Select the foreign key you want to use in your data project:</b></label>
-                            </div>
-                            <div id="key_list_id">
-                            </div>
-                        </div>
-
-                        <div id="fields">
-                            <h6 id="instructions">
-                                <kbd>Click</kbd> to select individual items<br>
-                                <kbd>Ctrl</kbd> + <kbd>Click</kbd> to select multiple items<br>
-                            </h6>
-
-                            <div class="form-group row">
-                                <label class="col-sm-6 col-form-label"><b>Selectable Fields</b></label>
-                                <label class="col-sm-6 col-form-label"><b>Selected Fields (in order they will appear in the display)</b><br><p id="selected_fields_check"></p></label>
-                                <ul id="fields_selectable" class="col-sm-6">
-                                </ul>
-
-                                <ul id="fields_selected" class="col-sm-6">
-                                </ul>
-                            </div>
-
-                            <label class="col-form-label"><b>Enter a display title (optional):</b></label>
-                            <div>
-                                <input id="title">
-                            </div>
-
-                            <div id="space">
-                            </div>
-                        </div>
-
-                        <div class="row" id="buttons_id">
-                            <div>
-                                <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
-                                <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <button class="clickable"  data-target="displays" data-parent="#accordionDisplays" onclick="toggleButton('displays')">
-                    Organize the configurations
-                </button>
-                <div class="collapse" id="displays_collapse" style="display:none;">
-                    TBD
-                </div>
-            </div>
-
-         </div>  <!-- END CONTAINER -->
-    </body>
-</html>
 
 <script>
     document.getElementById("fields").style.display = "none";
@@ -621,6 +505,7 @@ function getAvailableFields($selectedProj, $event, $form) {
     document.getElementById("buttons_id").style.display = "none";
 
     function toggleButton(buttonName) {
+        alert("In toggleButton");
         var display = document.getElementById(buttonName + '_collapse');
         if (display.style.display === 'none') {
             display.style.display = 'block';
@@ -1193,3 +1078,122 @@ function getAvailableFields($selectedProj, $event, $form) {
     };
 
 </script>
+
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <title>Embedded Data Table Setup</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=yes">
+    <link rel="stylesheet" type="text/css" href="<?php echo $module->getUrl("pages/EDT.css") ?>" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.0/js/select2.min.js"></script>
+</head>
+<body>
+
+<h3>Embedded Data Table Setup</h3>
+<div>
+    This is the Setup Page to create Embedded Data Tables for your project.  Please select the data table
+    that you would like to modify or create a new data table
+</div>
+<br>
+
+<div class="container">
+
+    <div class="accordion" id="accordionDisplays">
+        <div>
+            <button class="clickable"  data-target="setup" data-parent="#accordionDisplays" onclick="toggleButton('setup')">
+                Create, modify or delete a configuration
+            </button>
+            <div class="collapse" id="setup_collapse" style="display:none;">
+
+                <div class="row" id="config_id" style="display: inline;" >
+                    <div>
+                        <label class="col-form-label"><b>Embedded Table Name - select an existing setup or create a new one</b></label>
+                    </div>
+                    <div>
+                        <?php echo getSavedConfigs(); ?>
+                        <p id="edt_name_check"></p>
+                    </div>
+                </div>
+
+                <div class="row" id="projects_id">
+                    <div>
+                        <label class="col-form-label"><b>Select the project where the data resides:</b></label>
+                    </div>
+                    <div id="project_list_id">
+                    </div>
+                </div>
+
+                <div class="row" id="arm_id">
+                    <div>
+                        <label class="col-form-label"><b>There is more than one arm in this project, please select the arm you want to use:</b></label>
+                    </div>
+                    <div id="arm_list_id">
+                        <p id="arms_noselection_check"></p>
+                    </div>
+                </div>
+
+                <div class="row" id="form_id">
+                    <div>
+                        <label class="col-form-label"><b>Select the type of data you want to use:</b></label>
+                    </div>
+                    <div id="form_list_id">
+                    </div>
+                </div>
+
+                <div class="row" id="key_id">
+                    <div>
+                        <label class="col-form-label"><b>Select the foreign key you want to use in your data project:</b></label>
+                    </div>
+                    <div id="key_list_id">
+                    </div>
+                </div>
+
+                <div id="fields">
+                    <h6 id="instructions">
+                        <kbd>Click</kbd> to select individual items<br>
+                        <kbd>Ctrl</kbd> + <kbd>Click</kbd> to select multiple items<br>
+                    </h6>
+
+                    <div class="form-group row">
+                        <label class="col-sm-6 col-form-label"><b>Selectable Fields</b></label>
+                        <label class="col-sm-6 col-form-label"><b>Selected Fields (in order they will appear in the display)</b><br><p id="selected_fields_check"></p></label>
+                        <ul id="fields_selectable" class="col-sm-6">
+                        </ul>
+
+                        <ul id="fields_selected" class="col-sm-6">
+                        </ul>
+                    </div>
+
+                    <label class="col-form-label"><b>Enter a display title (optional):</b></label>
+                    <div>
+                        <input id="title">
+                    </div>
+
+                    <div id="space">
+                    </div>
+                </div>
+
+                <div class="row" id="buttons_id">
+                    <div>
+                        <input class="button" type="submit" value="Save Setup" onclick="saveSetup()"/>
+                        <input class="button" type="submit" value="Delete Setup" onclick="deleteSetup()"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <button class="clickable"  data-target="displays" data-parent="#accordionDisplays" onclick="toggleButton('displays')">
+            Organize the configurations
+        </button>
+        <div class="collapse" id="displays_collapse" style="display:none;">
+            TBD
+        </div>
+    </div>
+
+</div>  <!-- END CONTAINER -->
+</body>
+</html>

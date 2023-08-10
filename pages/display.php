@@ -19,7 +19,8 @@ $title = isset($_GET['title']) && !empty($_GET['title']) ? $_GET['title'] : null
 
 $module->emDebug("In display: pid $pid, record_id $record_id, displays $displays");
 
-DEFINE(PROJECT_PID, $pid);
+//DEFINE(PROJECT_PID, $pid);
+$module->projectId = $pid;
 $user = USERID;
 
 if (empty($pid)) {

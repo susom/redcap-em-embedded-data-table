@@ -18,7 +18,8 @@ $record_id = isset($_GET['record']) && !empty($_GET['record']) ? $_GET['record']
 $displays = isset($_GET['displays']) && !empty($_GET['displays']) ? $_GET['displays'] : null;
 $title = isset($_GET['title']) && !empty($_GET['title']) ? $_GET['title'] : null;
 
-DEFINE(PROJECT_PID, $pid);
+//DEFINE(PROJECT_PID, $pid);
+$module->projectId = $pid;
 $user = USERID;
 
 if (empty($pid)) {
@@ -73,9 +74,9 @@ if (empty($displays)) {
 
 <!--      Add filter  -->
             <table class="display compact" style="width:100%; margin-bottom: 30px; font-size: small;">
-                <table-caption>
-                    <h6 align="center">This date filter is applied to the second column of every table.</h6>
-                </table-caption>
+                <th colspan="6">
+                    <h6 style="text-align:center">This date filter is applied to the second column of every table.</h6>
+                </th>
                 <body>
                 <tr>
                     <td class="col" style="width:27%">
@@ -89,7 +90,7 @@ if (empty($displays)) {
                         <input id="end_date" type="date" size="10">
                     </td>
                     <td class="col" style="margin-right: 1px; width: 6%; vertical-align: bottom">
-                    <button class="btn-sm btn-secondary" id="filter">Filter</button>
+                        <button class="btn-sm btn-secondary" id="filter">Filter</button>
                     </td>
                     <td class="col" style="width:20%; vertical-align: bottom">
                         <button class="btn-sm btn-secondary" id="clearFilter">Clear Filter</button>

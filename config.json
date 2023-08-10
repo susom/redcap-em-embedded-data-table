@@ -3,6 +3,8 @@
 
   "namespace":"Stanford\\EDT",
 
+  "framework": 11,
+
   "description": "A module that allows users to embed data tables into their projects",
 
   "versions": [
@@ -40,7 +42,8 @@
       {
         "name": "Embedded Data Table Setup",
         "icon": "gear",
-        "url": "pages/setup.php"
+        "url": "pages/setup.php",
+        "show-header-and-footer": true
       }
     ]
   },
