@@ -327,7 +327,7 @@ function retrieveDataUsingFile($config_info, $record_id) {
     $filename = $config_info["file"];
     $classname = "Stanford\\EDT\\" . explode(".", $filename)[0];
     $system_location = $module->getSystemSettings();
-    $file_location =  $system_location["datasource_location"]["value"] . "/" . $filename;
+    $file_location = __DIR__ .'/' . $system_location["datasource_location"]["value"] . "/" . $filename;
 
     if (file_exists($file_location)) {
         try {
